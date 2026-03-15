@@ -280,6 +280,51 @@
   color: var(--text-secondary);
 }
 
+/* Animated section */
+.animated-section {
+  margin-top: 56px;
+}
+
+.animated-heading {
+  margin-bottom: 24px;
+}
+
+.animated-heading h2 {
+  font-size: 1.5rem;
+  color: var(--text-white);
+  font-weight: 700;
+}
+
+.animated-scroll {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.animated-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.animated-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.animated-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.animated-card {
+  flex: 0 0 180px;
+}
+
+.animated-tag {
+  color: #a78bfa !important;
+}
+
 /* Watched list */
 .watched-list {
   display: flex;

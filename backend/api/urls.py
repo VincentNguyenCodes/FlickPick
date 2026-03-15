@@ -9,4 +9,5 @@ urlpatterns = [
     path('recommendations/', views.get_recommendations),
     path('watched/', views.get_watched),
     path('auth/delete-account/', views.delete_account),
+    path('recommendations/animated/', views.get_animated),
 ]

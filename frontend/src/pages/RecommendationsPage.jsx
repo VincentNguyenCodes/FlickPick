@@ -9,6 +9,7 @@ import './RecommendationsPage.css';
 function RecommendationsPage() {
   const [tab, setTab] = useState('recommendations');
   const [movies, setMovies] = useState([]);
+  const [animated, setAnimated] = useState([]);
   const [watched, setWatched] = useState([]);
   const [loadingRecs, setLoadingRecs] = useState(true);
   const [loadingWatched, setLoadingWatched] = useState(false);
@@ -30,6 +31,15 @@ function RecommendationsPage() {
       .finally(() => setLoadingRecs(false));
   }, [token]);
 
+  const fetchAnimated = useCallback(() => {
+    fetch('http://localhost:8000/api/recommendations/animated/', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => { if (data.movies) setAnimated(data.movies); })
+      .catch(() => {});
+  }, [token]);
+
   const fetchWatched = useCallback(() => {
     setLoadingWatched(true);
     fetch('http://localhost:8000/api/watched/', {
@@ -43,7 +53,8 @@ function RecommendationsPage() {
 
   useEffect(() => {
     fetchRecommendations();
-  }, [fetchRecommendations]);
+    fetchAnimated();
+  }, [fetchRecommendations, fetchAnimated]);
 
   useEffect(() => {
     if (tab === 'watched') fetchWatched();
@@ -67,7 +78,7 @@ function RecommendationsPage() {
     }
     // Retrain + refetch keeps list at 10 with the next best movie
     fetchRecommendations();
-    // If watched tab is open, refresh it too
+    fetchAnimated();
     if (tab === 'watched') fetchWatched();
   };
 
@@ -152,6 +163,42 @@ function RecommendationsPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* ── Animated Section ── */}
+            {animated.length > 0 && (
+              <div className="animated-section">
+                <div className="animated-heading">
+                  <h2>Top Animated Movies</h2>
+                  <p className="recs-sub">Highest rated animated films you haven't seen yet.</p>
+                </div>
+                <div className="animated-scroll">
+                  {animated.map((movie, index) => (
+                    <div
+                      key={movie.id}
+                      className={`movie-card animated-card ${hoveredId === movie.id ? 'hovered' : ''}`}
+                      onMouseEnter={() => setHoveredId(movie.id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                    >
+                      <div className="card-rank">#{index + 1}</div>
+                      <img src={movie.poster} alt={movie.title} className="card-poster" />
+                      <div className="card-info">
+                        <div className="card-match animated-tag">Animation</div>
+                        <h3 className="card-title">{movie.title}</h3>
+                        <p className="card-meta">{movie.year}</p>
+                        <p className="card-director">Dir. {movie.director}</p>
+                        <p className="card-cast">{movie.cast.slice(0, 2).join(', ')}</p>
+                        <div className="card-rating">★ {movie.rating}</div>
+                      </div>
+                      <div className="card-hover-overlay">
+                        <button className="watched-btn" onClick={() => handleWatched(movie)}>
+                          Already Watched
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </>

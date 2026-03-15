@@ -107,6 +107,35 @@ def delete_account(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def get_animated(request):
+    rated_ids = set(
+        Rating.objects.filter(user=request.user).values_list('movie_id', flat=True)
+    )
+    movies = (
+        Movie.objects
+        .filter(genre='Animation')
+        .exclude(id__in=rated_ids)
+        .order_by('-avg_rating')[:10]
+    )
+    results = [
+        {
+            'id': m.id,
+            'title': m.title,
+            'year': m.year,
+            'genre': m.genre,
+            'director': m.director,
+            'cast': m.cast,
+            'rating': m.avg_rating,
+            'poster': m.poster_url,
+            'description': m.description,
+        }
+        for m in movies
+    ]
+    return Response({'movies': results})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_watched(request):
     ratings = (
         Rating.objects

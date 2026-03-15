@@ -81,7 +81,7 @@ def main():
     movie_ids = []
     page = 1
 
-    while len(movie_ids) < 200:
+    while len(movie_ids) < 1000:
         url = f'{BASE_URL}/movie/top_rated?api_key={API_KEY}&language=en-US&page={page}'
         data = fetch(url)
         results = data.get('results', [])
@@ -94,7 +94,7 @@ def main():
         page += 1
         time.sleep(0.25)
 
-    movie_ids = movie_ids[:200]
+    movie_ids = movie_ids[:1000]
     print(f'\nFetching details for {len(movie_ids)} movies...')
 
     created = 0
@@ -112,10 +112,10 @@ def main():
                 created += 1
             else:
                 updated += 1
-            print(f'  [{i+1}/200] {details["title"]} ({details["year"]}) - {details["genre"]}')
+            print(f'  [{i+1}/1000] {details["title"]} ({details["year"]}) - {details["genre"]}')
             time.sleep(0.1)
         except Exception as e:
-            print(f'  [{i+1}/200] ERROR tmdb_id={tmdb_id}: {e}')
+            print(f'  [{i+1}/1000] ERROR tmdb_id={tmdb_id}: {e}')
 
     print(f'\nDone! Created: {created}, Updated: {updated}')
     print(f'Total movies in DB: {Movie.objects.count()}')
