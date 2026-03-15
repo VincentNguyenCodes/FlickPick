@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 from .models import Movie, Rating
 
-GENRES = ['Action', 'Romance', 'Sci-Fi', 'Comedy', 'Horror']
+GENRES = ['Action', 'Romance', 'Sci-Fi', 'Comedy', 'Horror', 'Animation']
 GENRE_INDEX = {g: i for i, g in enumerate(GENRES)}
 
 # ── Feature extraction ────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ def build_input(movie, user_pref_vec):
 # ── Model ──────────────────────────────────────────────────────────────────────
 
 class RecommenderNet(nn.Module):
-    def __init__(self, input_size=12):
+    def __init__(self, input_size=14):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(input_size, 64),
@@ -122,15 +122,18 @@ def train_model(user):
 
 # ── Recommendation ─────────────────────────────────────────────────────────────
 
-def get_recommendations(user, top_k=10):
+def get_recommendations(user, top_k=10, genre=None):
     """
     Score all movies the user hasn't rated, return top_k as dicts.
+    Optionally filter to a specific genre.
     Falls back to rating-sorted list if model can't be trained.
     """
     rated_ids = set(
         Rating.objects.filter(user=user).values_list('movie_id', flat=True)
     )
     candidates = Movie.objects.exclude(id__in=rated_ids)
+    if genre:
+        candidates = candidates.filter(genre=genre)
 
     model = train_model(user)
     user_pref = user_preference_vector(user)
