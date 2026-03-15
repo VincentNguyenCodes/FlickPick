@@ -110,7 +110,7 @@ def train_model(user):
     criterion = nn.BCELoss()
 
     model.train()
-    for _ in range(300):
+    for _ in range(80):
         optimizer.zero_grad()
         pred = model(X_tensor)
         loss = criterion(pred, y_tensor)
@@ -154,6 +154,16 @@ def get_recommendations(user, top_k=10, genre=None):
     scored.sort(key=lambda t: t[0], reverse=True)
     top = scored[:top_k]
 
+    # Normalize scores to a 60–97% range so there's always a visible spread
+    raw_scores = [s for s, _ in top]
+    lo, hi = min(raw_scores), max(raw_scores)
+    score_range = hi - lo
+
+    def normalize(s):
+        if score_range < 0.01:
+            return round(s * 100)
+        return round(60 + (s - lo) / score_range * 37)
+
     results = []
     for rank, (score, movie) in enumerate(top, 1):
         results.append({
@@ -166,7 +176,7 @@ def get_recommendations(user, top_k=10, genre=None):
             'rating': movie.avg_rating,
             'poster': movie.poster_url,
             'description': movie.description,
-            'match': round(score * 100),
+            'match': normalize(score),
         })
 
     return results
