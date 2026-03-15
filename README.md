@@ -200,6 +200,71 @@ Authorization: Bearer <token>
 
 ---
 
+## System Design at Scale
+
+The current implementation is designed for a single server with a small user base. Here's how the architecture would evolve to handle 100k+ users:
+
+### Bottleneck 1 — Per-request model retraining
+**Problem:** The ML model retrains from scratch on every `/api/recommendations/` call. At scale this would be unusably slow and CPU-bound.
+
+**Solution:**
+- Move retraining to an **async job queue** (Celery + Redis). When a user submits a rating, enqueue a retraining job instead of blocking the request.
+- **Cache the trained model weights** per user in Redis with a TTL. Serve recommendations from the cached model until a new rating invalidates it.
+- For cold users (< 10 ratings), skip retraining entirely and serve from the global fallback.
+
+### Bottleneck 2 — SQLite
+**Problem:** SQLite has no connection pooling and locks on writes — two users submitting ratings simultaneously would fail.
+
+**Solution:**
+- Migrate to **PostgreSQL** with connection pooling (PgBouncer). Schema is already migration-ready via Django ORM.
+- Add database indexes on `Rating.user_id` and `Movie.genre` — the two most-queried columns.
+
+### Bottleneck 3 — Single server
+**Problem:** One Django process handles all requests — no horizontal scaling, single point of failure.
+
+**Solution:**
+- Containerize with **Docker**, deploy behind a load balancer (NGINX) with multiple Django workers (Gunicorn).
+- Separate the ML inference service from the web API so compute-heavy retraining doesn't block auth or rating endpoints.
+- Serve static assets and movie posters through a **CDN** instead of the app server.
+
+### Bottleneck 4 — ML model quality
+**Problem:** The per-user MLP trained on 14 features works for small datasets but doesn't capture user-to-user similarity.
+
+**Solution:**
+- Add **collaborative filtering** — users who rated movies similarly to you inform your recommendations even for movies you haven't seen.
+- Replace genre one-hot encoding with **learned embeddings** that capture richer movie relationships.
+- Implement **offline evaluation** with precision@k and recall@k metrics to measure recommendation quality before shipping model changes.
+
+### Revised architecture at scale
+
+```
+                         ┌─────────────┐
+                         │   CDN       │  ← static assets, posters
+                         └─────────────┘
+                                │
+┌──────────┐    HTTPS    ┌──────▼───────┐
+│  Client  │────────────▶│  NGINX LB    │
+└──────────┘             └──────┬───────┘
+                                │
+              ┌─────────────────┼─────────────────┐
+              ▼                 ▼                 ▼
+        ┌──────────┐     ┌──────────┐     ┌──────────┐
+        │ Django   │     │ Django   │     │ Django   │  ← Gunicorn workers
+        └────┬─────┘     └────┬─────┘     └────┬─────┘
+             └────────────────┼────────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+       ┌────────────┐  ┌────────────┐  ┌────────────┐
+       │ PostgreSQL │  │   Redis    │  │  Celery    │
+       │  (primary) │  │  (cache +  │  │  workers   │
+       │ + replica  │  │   queue)   │  │ (retraining│
+       └────────────┘  └────────────┘  │  jobs)     │
+                                       └────────────┘
+```
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
