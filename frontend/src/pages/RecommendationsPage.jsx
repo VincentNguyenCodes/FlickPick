@@ -173,20 +173,20 @@ function RecommendationsPage() {
                   <h2>Top Animated Movies</h2>
                   <p className="recs-sub">Highest rated animated films you haven't seen yet.</p>
                 </div>
-                <div className="animated-scroll">
+                <div className="movies-grid">
                   {animated.map((movie, index) => (
                     <div
                       key={movie.id}
-                      className={`movie-card animated-card ${hoveredId === movie.id ? 'hovered' : ''}`}
+                      className={`movie-card ${hoveredId === movie.id ? 'hovered' : ''}`}
                       onMouseEnter={() => setHoveredId(movie.id)}
                       onMouseLeave={() => setHoveredId(null)}
                     >
                       <div className="card-rank">#{index + 1}</div>
                       <img src={movie.poster} alt={movie.title} className="card-poster" />
                       <div className="card-info">
-                        <div className="card-match animated-tag">Animation</div>
+                        <div className="card-match">{movie.match}% Match</div>
                         <h3 className="card-title">{movie.title}</h3>
-                        <p className="card-meta">{movie.year}</p>
+                        <p className="card-meta">{movie.year} · {movie.genre}</p>
                         <p className="card-director">Dir. {movie.director}</p>
                         <p className="card-cast">{movie.cast.slice(0, 2).join(', ')}</p>
                         <div className="card-rating">★ {movie.rating}</div>
