@@ -37,7 +37,7 @@ A full-stack personalized movie recommendation app that trains a per-user PyTorc
                └───────────┬───────────┘
                            │
                ┌───────────▼───────────┐
-               │  SQLite (dev)         │
+               │  PostgreSQL           │
                │  Movie, Rating,       │
                │  UserProfile          │
                └───────────────────────┘
@@ -122,7 +122,7 @@ cp .env.example .env
 ### 2. Install Python dependencies
 
 ```bash
-pip install django djangorestframework djangorestframework-simplejwt django-cors-headers torch python-dotenv
+pip install django djangorestframework djangorestframework-simplejwt django-cors-headers torch python-dotenv psycopg2-binary
 ```
 
 ### 3. Set up the database and seed movies
@@ -274,4 +274,4 @@ The current implementation is designed for a single server with a small user bas
 | Auth | djangorestframework-simplejwt (JWT) |
 | ML | PyTorch 2.x |
 | Movie data | TMDB API |
-| Database | SQLite (dev) |
+| Database | PostgreSQL |
