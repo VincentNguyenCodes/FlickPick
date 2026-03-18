@@ -6,12 +6,12 @@ A full-stack personalized movie recommendation app that trains a per-user PyTorc
 
 ## Features
 
-- **Personalized recommendations** — a dedicated neural network is trained for each user based on their own ratings
-- **Onboarding flow** — new users rate up to 10 movies across 5 genres (Action, Romance, Sci-Fi, Comedy, Horror) to cold-start the model
-- **Live updates** — marking a movie as watched retrains your model immediately and refills the list to 10
-- **Watched history** — full watch history with your star ratings and dates
-- **Account management** — avatar dropdown with settings modal; account deletion wipes all personal data from the database
-- **200-movie catalog** — seeded from TMDB's top-rated English films with posters, cast, director, and genre
+- **Personalized recommendations** - a dedicated neural network is trained for each user based on their own ratings
+- **Onboarding flow** - new users rate up to 10 movies across 5 genres (Action, Romance, Sci-Fi, Comedy, Horror) to cold-start the model
+- **Live updates** - marking a movie as watched retrains your model immediately and refills the list to 10
+- **Watched history** - full watch history with your star ratings and dates
+- **Account management** - avatar dropdown with settings modal; account deletion wipes all personal data from the database
+- **200-movie catalog** - seeded from TMDB's top-rated English films with posters, cast, director, and genre
 
 ---
 
@@ -173,7 +173,7 @@ App opens at `http://localhost:3000`
 | `GET` | `/api/recommendations/` | Get top 10 personalized picks |
 | `GET` | `/api/watched/` | Get full watch history |
 
-### Example — get recommendations
+### Example - get recommendations
 
 ```
 GET /api/recommendations/
@@ -204,7 +204,7 @@ Authorization: Bearer <token>
 
 The current implementation is designed for a single server with a small user base. Here's how the architecture would evolve to handle 100k+ users:
 
-### Bottleneck 1 — Per-request model retraining
+### Bottleneck 1 - Per-request model retraining
 **Problem:** The ML model retrains from scratch on every `/api/recommendations/` call. At scale this would be unusably slow and CPU-bound.
 
 **Solution:**
@@ -212,26 +212,26 @@ The current implementation is designed for a single server with a small user bas
 - **Cache the trained model weights** per user in Redis with a TTL. Serve recommendations from the cached model until a new rating invalidates it.
 - For cold users (< 10 ratings), skip retraining entirely and serve from the global fallback.
 
-### Bottleneck 2 — SQLite
-**Problem:** SQLite has no connection pooling and locks on writes — two users submitting ratings simultaneously would fail.
+### Bottleneck 2 - SQLite
+**Problem:** SQLite has no connection pooling and locks on writes - two users submitting ratings simultaneously would fail.
 
 **Solution:**
 - Migrate to **PostgreSQL** with connection pooling (PgBouncer). Schema is already migration-ready via Django ORM.
-- Add database indexes on `Rating.user_id` and `Movie.genre` — the two most-queried columns.
+- Add database indexes on `Rating.user_id` and `Movie.genre` - the two most-queried columns.
 
-### Bottleneck 3 — Single server
-**Problem:** One Django process handles all requests — no horizontal scaling, single point of failure.
+### Bottleneck 3 - Single server
+**Problem:** One Django process handles all requests - no horizontal scaling, single point of failure.
 
 **Solution:**
 - Containerize with **Docker**, deploy behind a load balancer (NGINX) with multiple Django workers (Gunicorn).
 - Separate the ML inference service from the web API so compute-heavy retraining doesn't block auth or rating endpoints.
 - Serve static assets and movie posters through a **CDN** instead of the app server.
 
-### Bottleneck 4 — ML model quality
+### Bottleneck 4 - ML model quality
 **Problem:** The per-user MLP trained on 14 features works for small datasets but doesn't capture user-to-user similarity.
 
 **Solution:**
-- Add **collaborative filtering** — users who rated movies similarly to you inform your recommendations even for movies you haven't seen.
+- Add **collaborative filtering** - users who rated movies similarly to you inform your recommendations even for movies you haven't seen.
 - Replace genre one-hot encoding with **learned embeddings** that capture richer movie relationships.
 - Implement **offline evaluation** with precision@k and recall@k metrics to measure recommendation quality before shipping model changes.
 
