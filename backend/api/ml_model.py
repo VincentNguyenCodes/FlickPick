@@ -6,6 +6,8 @@ from .models import Movie, Rating
 GENRES = ['Action', 'Romance', 'Sci-Fi', 'Comedy', 'Horror', 'Animation']
 GENRE_INDEX = {g: i for i, g in enumerate(GENRES)}
 
+DECADE_WEIGHT = 0.5  # lower = less sensitive (0.0 disables it, 1.0 = full weight)
+
 # ── Feature extraction ────────────────────────────────────────────────────────
 
 def decade_norm(year):
@@ -26,7 +28,7 @@ def movie_to_vector(movie):
         genre_vec[idx] = 1.0
 
     rating_norm = movie.avg_rating / 10.0
-    return genre_vec + [rating_norm, decade_norm(movie.year)]   # length 8
+    return genre_vec + [rating_norm, decade_norm(movie.year) * DECADE_WEIGHT]   # length 8
 
 
 def user_preference_vector(user):
@@ -56,7 +58,7 @@ def user_preference_vector(user):
 
     overall_avg = (sum(all_ratings) / len(all_ratings) / 5.0) if all_ratings else 0.5
     avg_liked_decade = (sum(liked_decades) / len(liked_decades)) if liked_decades else 0.5
-    return genre_avgs + [overall_avg, avg_liked_decade]   # length 8
+    return genre_avgs + [overall_avg, avg_liked_decade * DECADE_WEIGHT]   # length 8
 
 
 def build_input(movie, user_pref_vec):
