@@ -28,19 +28,27 @@ A full-stack personalized movie recommendation app that trains a per-user PyTorc
 │               Django REST API (port 8000)                │
 │  /api/auth/   /api/onboarding/   /api/recommendations/  │
 │  /api/ratings/   /api/watched/   /api/auth/delete-account│
-└──────────────────────────┬──────────────────────────────┘
-                           │
-               ┌───────────▼───────────┐
-               │   RecommenderNet      │
-               │   12 inputs → 1 out   │
-               │   (like probability)  │
-               └───────────┬───────────┘
-                           │
-               ┌───────────▼───────────┐
-               │  PostgreSQL           │
-               │  Movie, Rating,       │
-               │  UserProfile          │
-               └───────────────────────┘
+└───────┬──────────────────────────────────┬──────────────┘
+        │ enqueue retrain job              │ load cached weights
+        ▼                                  ▼
+┌───────────────┐                 ┌────────────────┐
+│  Celery       │  train & cache  │  Redis         │
+│  Worker       │────────────────▶│  model weights │
+│  (retraining) │                 │  + task queue  │
+└───────────────┘                 └────────────────┘
+        │
+        ▼
+┌───────────────────────┐
+│   RecommenderNet      │
+│   16 inputs → 1 out   │
+│   (like probability)  │
+└───────────┬───────────┘
+            │
+┌───────────▼───────────┐
+│  PostgreSQL            │
+│  Movie, Rating,        │
+│  UserProfile           │
+└───────────────────────┘
 ```
 
 ---
@@ -122,7 +130,7 @@ cp .env.example .env
 ### 2. Install Python dependencies
 
 ```bash
-pip install django djangorestframework djangorestframework-simplejwt django-cors-headers torch python-dotenv psycopg2-binary
+pip install django djangorestframework djangorestframework-simplejwt django-cors-headers torch python-dotenv psycopg2-binary celery redis django-redis
 ```
 
 ### 3. Set up the database and seed movies
@@ -134,7 +142,22 @@ python manage.py seed_movies       # seeds 30 curated onboarding movies
 python fetch_movies.py             # fetches top 200 from TMDB (optional but recommended)
 ```
 
-### 4. Start the Django backend
+### 4. Start Redis
+
+```bash
+redis-server
+```
+
+### 5. Start the Celery worker
+
+```bash
+cd backend
+celery -A backend worker --loglevel=info
+```
+
+The worker listens for retraining jobs enqueued after each rating submission and caches model weights in Redis.
+
+### 6. Start the Django backend
 
 ```bash
 python manage.py runserver
@@ -142,7 +165,7 @@ python manage.py runserver
 
 API available at `http://127.0.0.1:8000/api/`
 
-### 5. Start the React frontend
+### 7. Start the React frontend
 
 ```bash
 cd frontend
@@ -207,10 +230,7 @@ The current implementation is designed for a single server with a small user bas
 ### Bottleneck 1 - Per-request model retraining
 **Problem:** The ML model retrains from scratch on every `/api/recommendations/` call. At scale this would be unusably slow and CPU-bound.
 
-**Solution:**
-- Move retraining to an **async job queue** (Celery + Redis). When a user submits a rating, enqueue a retraining job instead of blocking the request.
-- **Cache the trained model weights** per user in Redis with a TTL. Serve recommendations from the cached model until a new rating invalidates it.
-- For cold users (< 10 ratings), skip retraining entirely and serve from the global fallback.
+**Implemented:** Rating submissions enqueue a **Celery** background task that retrains the model and stores the serialized weights in **Redis** (24-hour TTL). The recommendations endpoint loads from the cache rather than retraining on the fly, falling back to synchronous training only on a cache miss. Cold users (< 3 ratings or < 2 labeled examples) skip training and fall back to global TMDB ranking.
 
 ### Bottleneck 2 - SQLite
 **Problem:** SQLite has no connection pooling and locks on writes, so two users submitting ratings simultaneously would fail.
@@ -273,5 +293,7 @@ The current implementation is designed for a single server with a small user bas
 | Backend | Python 3.9, Django 4.2, Django REST Framework |
 | Auth | djangorestframework-simplejwt (JWT) |
 | ML | PyTorch 2.x |
+| Async tasks | Celery + Redis |
+| Model cache | Redis |
 | Movie data | TMDB API |
 | Database | PostgreSQL |

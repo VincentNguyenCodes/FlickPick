@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Movie, Rating, UserProfile
+from .tasks import retrain_user_model
 
 
 def get_tokens(user):
@@ -65,6 +66,7 @@ def onboarding(request):
     profile.onboarded = True
     profile.save()
 
+    retrain_user_model.delay(user.id)
     return Response({'status': 'ok'})
 
 
@@ -86,6 +88,7 @@ def submit_rating(request):
         user=request.user, movie=movie,
         defaults={'rating': rating_val}
     )
+    retrain_user_model.delay(request.user.id)
     return Response({'status': 'ok'})
 
 

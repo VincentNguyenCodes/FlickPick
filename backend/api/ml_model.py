@@ -138,8 +138,13 @@ def get_recommendations(user, top_k=10, genre=None):
     """
     Score all movies the user hasn't rated, return top_k as dicts.
     Optionally filter to a specific genre.
-    Falls back to rating-sorted list if model can't be trained.
+    Loads cached model weights from Redis if available; falls back to
+    synchronous training, then to TMDB rating sort if data is insufficient.
     """
+    import pickle
+    import base64
+    from django.core.cache import cache
+
     rated_ids = set(
         Rating.objects.filter(user=user).values_list('movie_id', flat=True)
     )
@@ -147,7 +152,20 @@ def get_recommendations(user, top_k=10, genre=None):
     if genre:
         candidates = candidates.filter(genre=genre)
 
-    model = train_model(user)
+    # Try cached model weights first (set by Celery after each rating)
+    model = None
+    cached = cache.get(f'flickpick_model_{user.id}')
+    if cached:
+        try:
+            model = RecommenderNet()
+            model.load_state_dict(pickle.loads(base64.b64decode(cached)))
+            model.eval()
+        except Exception:
+            model = None
+
+    if model is None:
+        model = train_model(user)
+
     user_pref = user_preference_vector(user)
 
     scored = []
