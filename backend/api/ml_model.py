@@ -8,11 +8,17 @@ GENRE_INDEX = {g: i for i, g in enumerate(GENRES)}
 
 # ── Feature extraction ────────────────────────────────────────────────────────
 
+def decade_norm(year):
+    """Normalize a year to a 0–1 decade value. 1920s=0.0, 2020s=1.0."""
+    decade = (year // 10) * 10
+    return max(0.0, min(1.0, (decade - 1920) / 100.0))
+
+
 def movie_to_vector(movie):
     """
     Encode a single Movie into a fixed-length feature vector.
 
-    [genre_one_hot (5), avg_rating_normalized (1)] → length 6
+    [genre_one_hot (6), avg_rating_normalized (1), decade_normalized (1)] → length 8
     """
     genre_vec = [0.0] * len(GENRES)
     idx = GENRE_INDEX.get(movie.genre)
@@ -20,25 +26,28 @@ def movie_to_vector(movie):
         genre_vec[idx] = 1.0
 
     rating_norm = movie.avg_rating / 10.0
-    return genre_vec + [rating_norm]   # length 6
+    return genre_vec + [rating_norm, decade_norm(movie.year)]   # length 8
 
 
 def user_preference_vector(user):
     """
     Build a preference vector from the user's rating history.
 
-    [avg_rating_per_genre (5), overall_avg_rating (1)] → length 6
+    [avg_rating_per_genre (6), overall_avg_rating (1), avg_liked_decade (1)] → length 8
     """
     ratings = Rating.objects.filter(user=user).select_related('movie')
 
     genre_totals = {g: [] for g in GENRES}
     all_ratings = []
+    liked_decades = []
 
     for r in ratings:
         g = r.movie.genre
         if g in genre_totals:
             genre_totals[g].append(r.rating)
         all_ratings.append(r.rating)
+        if r.rating >= 4:
+            liked_decades.append(decade_norm(r.movie.year))
 
     genre_avgs = []
     for g in GENRES:
@@ -46,18 +55,19 @@ def user_preference_vector(user):
         genre_avgs.append((sum(vals) / len(vals) / 5.0) if vals else 0.5)
 
     overall_avg = (sum(all_ratings) / len(all_ratings) / 5.0) if all_ratings else 0.5
-    return genre_avgs + [overall_avg]   # length 6
+    avg_liked_decade = (sum(liked_decades) / len(liked_decades)) if liked_decades else 0.5
+    return genre_avgs + [overall_avg, avg_liked_decade]   # length 8
 
 
 def build_input(movie, user_pref_vec):
-    """Concatenate movie vector + user preference vector → length 12."""
-    return movie_to_vector(movie) + user_pref_vec   # length 12
+    """Concatenate movie vector + user preference vector → length 16."""
+    return movie_to_vector(movie) + user_pref_vec   # length 16
 
 
 # ── Model ──────────────────────────────────────────────────────────────────────
 
 class RecommenderNet(nn.Module):
-    def __init__(self, input_size=14):
+    def __init__(self, input_size=16):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(input_size, 64),
