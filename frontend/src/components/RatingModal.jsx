@@ -2,8 +2,8 @@ import { useState } from 'react';
 import StarRating from './StarRating';
 import './RatingModal.css';
 
-function RatingModal({ movie, onSubmit, onClose }) {
-  const [rating, setRating] = useState(0);
+function RatingModal({ movie, onSubmit, onClose, initialRating = 0 }) {
+  const [rating, setRating] = useState(initialRating);
 
   const handleSubmit = () => {
     if (rating === 0) return;
@@ -20,7 +20,7 @@ function RatingModal({ movie, onSubmit, onClose }) {
           className="modal-poster"
         />
         <h2 className="modal-title">{movie.title}</h2>
-        <p className="modal-subtitle">How would you rate this?</p>
+        <p className="modal-subtitle">{initialRating > 0 ? 'Update your rating' : 'How would you rate this?'}</p>
         <StarRating value={rating} onChange={setRating} />
         <button
           className={`modal-btn ${rating > 0 ? 'active' : ''}`}

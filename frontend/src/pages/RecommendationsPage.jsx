@@ -14,6 +14,7 @@ function RecommendationsPage() {
   const [loadingRecs, setLoadingRecs] = useState(true);
   const [loadingWatched, setLoadingWatched] = useState(false);
   const [modalMovie, setModalMovie] = useState(null);
+  const [rerateMovie, setRerateMovie] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [hoveredId, setHoveredId] = useState(null);
   const navigate = useNavigate();
@@ -238,6 +239,7 @@ function RecommendationsPage() {
                         ))}
                       </div>
                       <p className="watched-date">{movie.watched_at}</p>
+                      <button className="rerate-btn" onClick={() => setRerateMovie(movie)}>Re-rate</button>
                     </div>
                   </div>
                 ))}
@@ -252,6 +254,15 @@ function RecommendationsPage() {
           movie={modalMovie}
           onSubmit={handleRatingSubmit}
           onClose={() => setModalMovie(null)}
+        />
+      )}
+
+      {rerateMovie && (
+        <RatingModal
+          movie={rerateMovie}
+          initialRating={rerateMovie.user_rating}
+          onSubmit={(movie, rating) => { setRerateMovie(null); handleRatingSubmit(movie, rating); }}
+          onClose={() => setRerateMovie(null)}
         />
       )}
 

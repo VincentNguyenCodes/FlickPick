@@ -376,3 +376,20 @@
   color: var(--text-secondary);
   font-size: 0.78rem;
 }
+
+.rerate-btn {
+  margin-top: 6px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.rerate-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
