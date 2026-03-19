@@ -1,7 +1,3 @@
-"""
-Fetches top 200 movies from TMDB and updates the database.
-Run with: python3 fetch_movies.py
-"""
 import os
 import sys
 import django
@@ -13,7 +9,6 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent / '.env')
 
-# Django setup
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 django.setup()

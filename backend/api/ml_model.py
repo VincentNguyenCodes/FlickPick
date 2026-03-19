@@ -6,37 +6,25 @@ from .models import Movie, Rating
 GENRES = ['Action', 'Romance', 'Sci-Fi', 'Comedy', 'Horror', 'Animation']
 GENRE_INDEX = {g: i for i, g in enumerate(GENRES)}
 
-DECADE_WEIGHT = 0.5  # lower = less sensitive (0.0 disables it, 1.0 = full weight)
+DECADE_WEIGHT = 0.5
 
-# ── Feature extraction ────────────────────────────────────────────────────────
 
 def decade_norm(year):
-    """Normalize a year to a 0–1 decade value. 1920s=0.0, 2020s=1.0."""
     decade = (year // 10) * 10
     return max(0.0, min(1.0, (decade - 1920) / 100.0))
 
 
 def movie_to_vector(movie):
-    """
-    Encode a single Movie into a fixed-length feature vector.
-
-    [genre_one_hot (6), avg_rating_normalized (1), decade_normalized (1)] → length 8
-    """
     genre_vec = [0.0] * len(GENRES)
     idx = GENRE_INDEX.get(movie.genre)
     if idx is not None:
         genre_vec[idx] = 1.0
 
     rating_norm = movie.avg_rating / 10.0
-    return genre_vec + [rating_norm, decade_norm(movie.year) * DECADE_WEIGHT]   # length 8
+    return genre_vec + [rating_norm, decade_norm(movie.year) * DECADE_WEIGHT]
 
 
 def user_preference_vector(user):
-    """
-    Build a preference vector from the user's rating history.
-
-    [avg_rating_per_genre (6), overall_avg_rating (1), avg_liked_decade (1)] → length 8
-    """
     ratings = Rating.objects.filter(user=user).select_related('movie')
 
     genre_totals = {g: [] for g in GENRES}
@@ -58,15 +46,12 @@ def user_preference_vector(user):
 
     overall_avg = (sum(all_ratings) / len(all_ratings) / 5.0) if all_ratings else 0.5
     avg_liked_decade = (sum(liked_decades) / len(liked_decades)) if liked_decades else 0.5
-    return genre_avgs + [overall_avg, avg_liked_decade * DECADE_WEIGHT]   # length 8
+    return genre_avgs + [overall_avg, avg_liked_decade * DECADE_WEIGHT]
 
 
 def build_input(movie, user_pref_vec):
-    """Concatenate movie vector + user preference vector → length 16."""
-    return movie_to_vector(movie) + user_pref_vec   # length 16
+    return movie_to_vector(movie) + user_pref_vec
 
-
-# ── Model ──────────────────────────────────────────────────────────────────────
 
 class RecommenderNet(nn.Module):
     def __init__(self, input_size=16):
@@ -85,16 +70,9 @@ class RecommenderNet(nn.Module):
         return self.net(x)
 
 
-# ── Training ───────────────────────────────────────────────────────────────────
-
 def train_model(user):
-    """
-    Train a per-user model from their rating history.
-    Returns the trained model, or None if not enough data.
-    """
     ratings = list(Rating.objects.filter(user=user).select_related('movie'))
 
-    # Need at least 3 ratings to train
     if len(ratings) < 3:
         return None
 
@@ -102,14 +80,12 @@ def train_model(user):
 
     X, y = [], []
     for r in ratings:
-        # 4-5 stars = liked (1), 1-2 stars = disliked (0), 3 = skip
         if r.rating >= 4:
             X.append(build_input(r.movie, user_pref))
             y.append(1.0)
         elif r.rating <= 2:
             X.append(build_input(r.movie, user_pref))
             y.append(0.0)
-        # neutral (3 stars) — skip both X and y
 
     if len(y) < 2:
         return None
@@ -132,15 +108,7 @@ def train_model(user):
     return model
 
 
-# ── Recommendation ─────────────────────────────────────────────────────────────
-
 def get_recommendations(user, top_k=10, genre=None):
-    """
-    Score all movies the user hasn't rated, return top_k as dicts.
-    Optionally filter to a specific genre.
-    Loads cached model weights from Redis if available; falls back to
-    synchronous training, then to TMDB rating sort if data is insufficient.
-    """
     import pickle
     import base64
     from django.core.cache import cache
@@ -152,7 +120,6 @@ def get_recommendations(user, top_k=10, genre=None):
     if genre:
         candidates = candidates.filter(genre=genre)
 
-    # Try cached model weights first (set by Celery after each rating)
     model = None
     cached = cache.get(f'flickpick_model_{user.id}')
     if cached:
@@ -177,14 +144,12 @@ def get_recommendations(user, top_k=10, genre=None):
                 score = model(x).item()
                 scored.append((score, movie))
     else:
-        # Fallback: rank by TMDB avg_rating
         for movie in candidates:
             scored.append((movie.avg_rating / 10.0, movie))
 
     scored.sort(key=lambda t: t[0], reverse=True)
     top = scored[:top_k]
 
-    # Normalize scores to a 60–97% range so there's always a visible spread
     raw_scores = [s for s, _ in top]
     lo, hi = min(raw_scores), max(raw_scores)
     score_range = hi - lo

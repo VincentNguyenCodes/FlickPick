@@ -6,15 +6,11 @@ from django.core.cache import cache
 from django.contrib.auth.models import User
 
 MODEL_CACHE_KEY = 'flickpick_model_{user_id}'
-MODEL_CACHE_TTL = 86400  # 24 hours
+MODEL_CACHE_TTL = 86400
 
 
 @shared_task
 def retrain_user_model(user_id):
-    """
-    Retrain the recommendation model for a user and cache the weights in Redis.
-    Triggered asynchronously after a rating is submitted.
-    """
     from .ml_model import train_model, RecommenderNet
 
     user = User.objects.get(id=user_id)

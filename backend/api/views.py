@@ -104,7 +104,7 @@ def get_recommendations(request):
 @permission_classes([IsAuthenticated])
 def delete_account(request):
     user = request.user
-    user.delete()  # cascades to ratings, profile
+    user.delete()
     return Response({'status': 'deleted'})
 
 
