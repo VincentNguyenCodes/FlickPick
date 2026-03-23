@@ -124,6 +124,7 @@ function OnboardingPage() {
   const [selectedRating, setSelectedRating] = useState(0);
   const [scrolled, setScrolled] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const cardRef = useRef(null);
   const navigate = useNavigate();
 
   const movie = queue[current];
