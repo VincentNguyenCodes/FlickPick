@@ -130,6 +130,16 @@ function OnboardingPage() {
   const prev = queue[current - 1];
   const next = queue[current + 1];
 
+  const toggleGenre = (g) => {
+    if (selectedGenres.includes(g)) {
+      setSelectedGenres(selectedGenres.filter((x) => x !== g));
+    } else if (selectedGenres.length < 3) {
+      setSelectedGenres([...selectedGenres, g]);
+    }
+  };
+
+  const profileComplete = selectedGenres.length >= 1 && ageRange && gender && region;
+
   const handleRate = () => {
     if (selectedRating === 0) return;
     const newRatings = { ...ratings, [movie.id]: selectedRating };
