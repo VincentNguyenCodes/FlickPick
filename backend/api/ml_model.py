@@ -16,6 +16,7 @@ REGIONS = ['Americas', 'Europe', 'East Asia', 'South/SE Asia', 'Middle East/Afri
 
 MOVIE_FEATURE_DIM = 14
 USER_FEATURE_DIM = NUM_GENRES * 2 + 2 + len(AGE_RANGES) + len(GENDERS) + len(REGIONS)
+EMBEDDING_DIM = 32
 
 
 def decade_norm(year):
