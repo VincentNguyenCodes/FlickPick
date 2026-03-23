@@ -12,4 +12,5 @@ urlpatterns = [
     path('recommendations/animated/', views.get_animated),
     path('profile/', views.get_profile),
     path('genres/', views.get_genres),
+    path('recommendations/genre/<str:genre>/', views.get_by_genre),
 ]
