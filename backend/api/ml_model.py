@@ -329,8 +329,6 @@ def get_recommendations(user, top_k=10, genre=None):
     if len(top) < top_k:
         scored_ids = {m.id for _, m in top}
         fallback = Movie.objects.exclude(id__in=rated_ids).exclude(id__in=scored_ids)
-        if genre:
-            fallback = fallback.filter(genre=genre)
         needed = top_k - len(top)
         for movie in fallback.order_by('-avg_rating')[:needed]:
             top.append((movie.avg_rating / 10.0, movie))
