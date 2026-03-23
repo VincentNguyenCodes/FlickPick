@@ -204,6 +204,74 @@ function OnboardingPage() {
   const ratedCount = Object.keys(ratings).length;
   const progress = Math.round((ratedCount / 10) * 100);
 
+  if (step === 1) {
+    return (
+      <div className="onboarding-page">
+        <header className="onboarding-header">
+          <Logo size="sm" />
+        </header>
+        <div className="profile-step">
+          <h1 className="profile-title">Tell us about yourself</h1>
+          <p className="profile-subtitle">This helps us build better recommendations from day one.</p>
+
+          <div className="profile-section">
+            <label className="profile-section-label">Favorite genres <span className="profile-hint">(pick up to 3)</span></label>
+            <div className="genre-chips">
+              {ALL_GENRES.map((g) => (
+                <button
+                  key={g}
+                  className={`genre-chip ${selectedGenres.includes(g) ? 'selected' : ''} ${selectedGenres.length >= 3 && !selectedGenres.includes(g) ? 'maxed' : ''}`}
+                  onClick={() => toggleGenre(g)}
+                  type="button"
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="profile-fields">
+            <div className="profile-field">
+              <label>Age range</label>
+              <select value={ageRange} onChange={(e) => setAgeRange(e.target.value)}>
+                <option value="">Select...</option>
+                {['13-17', '18-24', '25-34', '35-44', '45-54', '55+'].map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+            <div className="profile-field">
+              <label>Gender</label>
+              <select value={gender} onChange={(e) => setGender(e.target.value)}>
+                <option value="">Select...</option>
+                {['Male', 'Female', 'Non-binary', 'Prefer not to say'].map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+            <div className="profile-field">
+              <label>Region</label>
+              <select value={region} onChange={(e) => setRegion(e.target.value)}>
+                <option value="">Select...</option>
+                {['Americas', 'Europe', 'East Asia', 'South/SE Asia', 'Middle East/Africa', 'Oceania'].map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <button
+            className="continue-btn"
+            disabled={!profileComplete}
+            onClick={() => setStep(2)}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="onboarding-page">
       <header className="onboarding-header">
@@ -221,14 +289,12 @@ function OnboardingPage() {
       </p>
 
       <div className="carousel-wrapper">
-        {/* Left blurred card */}
         <div className="side-card left">
           {prev && (
             <img src={prev.poster} alt={prev.title} className="side-poster" />
           )}
         </div>
 
-        {/* Center card */}
         <div className="center-card" onScroll={(e) => setScrolled(e.target.scrollTop > 40)}>
           <div className="poster-wrapper">
             <img src={movie.poster} alt={movie.title} className="center-poster" />
@@ -272,7 +338,6 @@ function OnboardingPage() {
           </div>
         </div>
 
-        {/* Right blurred card */}
         <div className="side-card right">
           {next && (
             <img src={next.poster} alt={next.title} className="side-poster" />
