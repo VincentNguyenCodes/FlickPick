@@ -40,3 +40,54 @@ def movie_to_vector(movie):
     rating_norm = movie.avg_rating / 10.0
     year_norm = decade_norm(movie.year)
     return affinity + [rating_norm, year_norm]
+
+
+def build_user_features(user):
+    from .models import UserProfile
+    ratings = list(Rating.objects.filter(user=user).select_related('movie'))
+
+    genre_totals = {g: [] for g in GENRES}
+    all_ratings = []
+    liked_decades = []
+
+    for r in ratings:
+        g = r.movie.genre
+        if g in genre_totals:
+            genre_totals[g].append(r.rating)
+        all_ratings.append(r.rating)
+        if r.rating >= 4:
+            liked_decades.append(decade_norm(r.movie.year))
+
+    genre_avgs = []
+    for g in GENRES:
+        vals = genre_totals[g]
+        genre_avgs.append((sum(vals) / len(vals) / 5.0) if vals else 0.0)
+
+    overall_avg = (sum(all_ratings) / len(all_ratings) / 5.0) if all_ratings else 0.5
+    avg_liked_decade = (sum(liked_decades) / len(liked_decades)) if liked_decades else 0.5
+
+    try:
+        profile = user.profile
+    except Exception:
+        profile = None
+
+    preferred = getattr(profile, 'preferred_genres', []) or []
+    genre_picks = [1.0 if g in preferred else 0.0 for g in GENRES]
+
+    age_range = getattr(profile, 'age_range', '') or ''
+    age_one_hot = [1.0 if a == age_range else 0.0 for a in AGE_RANGES]
+
+    gender = getattr(profile, 'gender', '') or ''
+    gender_one_hot = [1.0 if gd == gender else 0.0 for gd in GENDERS]
+
+    region = getattr(profile, 'region', '') or ''
+    region_one_hot = [1.0 if r == region else 0.0 for r in REGIONS]
+
+    return (
+        genre_avgs
+        + genre_picks
+        + [overall_avg, avg_liked_decade]
+        + age_one_hot
+        + gender_one_hot
+        + region_one_hot
+    )
