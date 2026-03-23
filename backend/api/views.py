@@ -121,6 +121,14 @@ def get_animated(request):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_by_genre(request, genre):
+    from .ml_model import get_recommendations as ml_recs
+    data = ml_recs(request.user, top_k=10, genre=genre)
+    return Response({'movies': data})
+
+
+@api_view(['GET'])
 @permission_classes([AllowAny])
 def get_genres(request):
     from .ml_model import GENRES
