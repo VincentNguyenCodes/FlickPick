@@ -13,6 +13,7 @@ class Movie(models.Model):
     poster_url = models.URLField(max_length=500)
     description = models.TextField(blank=True)
     embedding = models.JSONField(null=True, blank=True)
+    is_animated = models.BooleanField(default=False)
 
     class Meta:
         indexes = [

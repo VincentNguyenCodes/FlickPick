@@ -291,16 +291,16 @@ def get_recommendations(user, top_k=10, genre=None):
     rated_ids = set(Rating.objects.filter(user=user).values_list('movie_id', flat=True))
 
     if genre == 'Animation':
-        candidates = list(Movie.objects.filter(genre='Animation').exclude(id__in=rated_ids))
+        candidates = list(Movie.objects.filter(is_animated=True).exclude(id__in=rated_ids))
         scored = [(m.avg_rating / 10.0, m) for m in candidates]
         scored.sort(key=lambda t: t[0], reverse=True)
         top = scored[:top_k]
         if len(top) < top_k:
             scored_ids = {m.id for _, m in top}
-            for movie in Movie.objects.filter(genre='Animation').exclude(id__in=rated_ids).exclude(id__in=scored_ids).order_by('-avg_rating')[:top_k - len(top)]:
+            for movie in Movie.objects.filter(is_animated=True).exclude(id__in=rated_ids).exclude(id__in=scored_ids).order_by('-avg_rating')[:top_k - len(top)]:
                 top.append((movie.avg_rating / 10.0, movie))
     else:
-        candidates = list(Movie.objects.exclude(id__in=rated_ids).exclude(genre='Animation'))
+        candidates = list(Movie.objects.exclude(id__in=rated_ids).filter(is_animated=False))
         if genre:
             candidates = [m for m in candidates if m.genre == genre]
 
@@ -339,7 +339,7 @@ def get_recommendations(user, top_k=10, genre=None):
 
         if len(top) < top_k:
             scored_ids = {m.id for _, m in top}
-            fallback = Movie.objects.exclude(id__in=rated_ids).exclude(id__in=scored_ids).exclude(genre='Animation')
+            fallback = Movie.objects.filter(is_animated=False).exclude(id__in=rated_ids).exclude(id__in=scored_ids)
             if genre:
                 fallback = fallback.filter(genre=genre)
             for movie in fallback.order_by('-avg_rating')[:top_k - len(top)]:
