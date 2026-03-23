@@ -135,3 +135,38 @@ class TwoTowerNet(nn.Module):
         v_m = self.movie_net(x_m)
         dot = (v_u * v_m).sum(dim=1, keepdim=True)
         return torch.sigmoid(dot)
+
+
+def train_global_model(epochs=100, lr=0.001, l2=1e-4):
+    from django.contrib.auth.models import User
+
+    all_ratings = list(Rating.objects.select_related('movie', 'user__profile').all())
+    labeled = [(r, 1.0) for r in all_ratings if r.rating >= 4]
+    labeled += [(r, 0.0) for r in all_ratings if r.rating <= 2]
+
+    if len(labeled) < 4:
+        return None
+
+    X_u, X_m, y = [], [], []
+    for r, label in labeled:
+        X_u.append(build_user_features(r.user))
+        X_m.append(movie_to_vector(r.movie))
+        y.append(label)
+
+    X_u_t = torch.tensor(X_u, dtype=torch.float32)
+    X_m_t = torch.tensor(X_m, dtype=torch.float32)
+    y_t = torch.tensor(y, dtype=torch.float32).unsqueeze(1)
+
+    model = TwoTowerNet()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=l2)
+    criterion = nn.MSELoss()
+
+    model.train()
+    for _ in range(epochs):
+        optimizer.zero_grad()
+        pred = model(X_u_t, X_m_t)
+        loss = criterion(pred, y_t)
+        loss.backward()
+        optimizer.step()
+
+    return model
