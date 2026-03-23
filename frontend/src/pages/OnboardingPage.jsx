@@ -209,6 +209,10 @@ function OnboardingPage() {
       <div className="onboarding-page">
         <header className="onboarding-header">
           <Logo size="sm" />
+          <div className="step-indicator">
+            <span className="step-dot active" />
+            <span className="step-dot" />
+          </div>
         </header>
         <div className="profile-step">
           <h1 className="profile-title">Tell us about yourself</h1>
