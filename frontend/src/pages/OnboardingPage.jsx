@@ -4,6 +4,11 @@ import Logo from '../components/Logo';
 import StarRating from '../components/StarRating';
 import './OnboardingPage.css';
 
+const ALL_GENRES = [
+  'Action', 'Thriller', 'Crime', 'Drama', 'Romance',
+  'Sci-Fi', 'Comedy', 'Horror', 'Adventure', 'Fantasy', 'War', 'Animation',
+];
+
 const MOVIE_POOL = {
   action: [
     { id: 245891, title: 'John Wick', year: 2014, genre: 'Action', director: 'Chad Stahelski', cast: ['Keanu Reeves', 'Michael Nyqvist', 'Alfie Allen'], rating: 7.4, poster: 'https://image.tmdb.org/t/p/w500/fZPSd91yGE9fCcCe6OoQr6E3Bev.jpg', description: 'An ex-hit-man comes out of retirement to track down the gangsters that took everything from him.' },
