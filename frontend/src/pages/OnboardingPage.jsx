@@ -112,6 +112,11 @@ function buildQueue() {
 }
 
 function OnboardingPage() {
+  const [step, setStep] = useState(1);
+  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [ageRange, setAgeRange] = useState('');
+  const [gender, setGender] = useState('');
+  const [region, setRegion] = useState('');
   const [queue, setQueue] = useState(buildQueue());
   const [current, setCurrent] = useState(0);
   const [totalShown, setTotalShown] = useState(10);
