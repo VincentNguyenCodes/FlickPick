@@ -2,7 +2,33 @@
 
 ---
 
-## V2 - Two-Tower Neural Network (current)
+## V2.1 - Cold-Start Overhaul + is_animated Architecture (current)
+
+### What changed from V2
+
+- **Replaced Animation genre with `is_animated` boolean flag.** Animated movies are no longer bucketed into a generic "Animation" genre. They now carry their real content genre (Adventure, Fantasy, Comedy, Drama, etc.), which is used as-is by the ML model. Separation from live-action is enforced by `Movie.is_animated = True` rather than by genre string.
+
+- **Animated section scored independently.** The recommendations endpoint detects when the requested genre is animated and runs a fully separate pipeline: candidates are filtered by `is_animated=True`, sorted by `avg_rating` descending, and padded with highest-rated animated films if fewer than `top_k` are available. No two-tower or cold-start scoring is applied to the animated section.
+
+- **Animated ratings excluded from live-action cold-start.** When building V_u for the live-action cold-start, ratings on animated movies are skipped so they do not inflate the wrong genre dimensions in the user vector.
+
+- **Cosine similarity replaces raw dot product in cold-start.** The GENRE_AFFINITY row sum differs per genre (Adventure = 3.2, Romance = 1.7). A raw dot product of V_u against each movie's affinity row systematically favored high-sum genres. Each movie's affinity vector is now L2-normalized before scoring, making the comparison direction-based (cosine similarity) and eliminating the row-sum bias.
+
+- **Rating blend added to cold-start scoring.** Movies in the same genre previously received identical scores, making ranking within a genre arbitrary. The final cold-start score is now `genre_score * 0.5 + (avg_rating / 10.0) * 0.5` so higher-rated movies rank above lower-rated ones when genre similarity is equal.
+
+- **Genre diversity cap in top-k selection.** After scoring, movies are selected greedily with a cap of `max(2, top_k // num_genres + 1)` per genre before filling remaining slots from the global ranked list. This prevents any single genre from occupying all 10 recommendation slots.
+
+- **Catalog expanded to 342 movies** - 213 animated (from TMDB animated top-rated, each tagged with real content genre) and 129 live-action across 11 genres.
+
+### Files changed
+
+- `backend/api/models.py` - added `is_animated = BooleanField(default=False)`
+- `backend/api/ml_model.py` - `_cold_start_scores` and `get_recommendations` updated as above
+- `backend/api/management/commands/seed_movies.py` - all entries given `is_animated` flag; 200 additional animated movies added
+
+---
+
+## V2 - Two-Tower Neural Network
 
 ### What changed from V1
 

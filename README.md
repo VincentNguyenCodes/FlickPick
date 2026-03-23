@@ -13,7 +13,7 @@ See [docs/model-history.md](docs/model-history.md) for V1 vs V2 comparison.
 - **Live updates** - marking a movie as watched fine-tunes your UserNet immediately via Celery and refills the list to 10
 - **Watched history** - full watch history with your star ratings and dates
 - **Account management** - avatar dropdown with settings modal; account deletion wipes all personal data from the database
-- **1,000-movie catalog** - seeded from TMDB's top-rated English films across 12 genres with posters, cast, director, and description
+- **342-movie curated catalog** - 129 live-action films across 11 genres and 213 animated films stored with their real content genres (Adventure, Fantasy, Comedy, etc.) and separated from the live-action pipeline via an `is_animated` flag
 
 ---
 
@@ -48,9 +48,9 @@ See [docs/model-history.md](docs/model-history.md) for V1 vs V2 comparison.
 └───────────────┬─────────────────────────┘
                 │
 ┌───────────────▼───────────┐
-│  PostgreSQL               │
-│  Movie (+ embedding[32])  │
-│  Rating, UserProfile      │
+│  PostgreSQL                        │
+│  Movie (+ embedding[32], is_animated)  │
+│  Rating, UserProfile               │
 └───────────────────────────┘
 ```
 
@@ -82,7 +82,7 @@ See [docs/model-history.md](docs/model-history.md) for V1 vs V2 comparison.
 
 **Training - Phase 2 (per-user):** Fine-tune only UserNet (MovieNet frozen) on that user's ratings. 60 epochs. Cache UserNet weights in Redis (key: flickpick_user_net_{user_id}, TTL 24h).
 
-**Cold start (< 3 ratings):** Build V_u as weighted average of genre affinity vectors from onboarding genre picks. Score by dot product against stored Movie.embedding. No network inference.
+**Cold start (< 3 ratings):** Build V_u as weighted average of GENRE_AFFINITY rows for the genres the user has rated (live-action only). Score each candidate movie by cosine similarity between V_u and its GENRE_AFFINITY row, blended 50/50 with normalized avg_rating to differentiate within genres. A per-genre diversity cap (max 2 per genre, or top_k / num_genres + 1) prevents any single genre from dominating. Animated ratings are excluded from the live-action user vector, and animated movies are scored by avg_rating alone in a separate pipeline. No network inference.
 
 ---
 
