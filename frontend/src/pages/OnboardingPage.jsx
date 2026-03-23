@@ -204,8 +204,6 @@ function OnboardingPage() {
     navigate('/recommendations');
   };
 
-  const ratedCount = Object.keys(ratings).length;
-  const progress = Math.round((ratedCount / 10) * 100);
 
   if (step === 1) {
     return (
