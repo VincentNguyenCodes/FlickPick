@@ -428,3 +428,7 @@
     width: 280px;
   }
 }
+
+.profile-section + .profile-section {
+  margin-top: -8px;
+}
