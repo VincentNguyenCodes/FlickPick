@@ -1,17 +1,19 @@
 # FlickPick
 
-A full-stack personalized movie recommendation app that trains a per-user PyTorch neural network on your rating history to surface the 10 movies you're most likely to enjoy next.
+A full-stack personalized movie recommendation app powered by a two-tower neural network. UserNet and MovieNet each produce 32-dim embeddings trained jointly on all user-movie pairs, then per-user UserNet fine-tuning via Celery surfaces the 10 movies you're most likely to enjoy next.
+
+See [docs/model-history.md](docs/model-history.md) for V1 vs V2 comparison.
 
 ---
 
 ## Features
 
-- **Personalized recommendations** - a dedicated neural network is trained for each user based on their own ratings
-- **Onboarding flow** - new users rate up to 10 movies across 5 genres (Action, Romance, Sci-Fi, Comedy, Horror) to cold-start the model
-- **Live updates** - marking a movie as watched retrains your model immediately and refills the list to 10
+- **Personalized recommendations** - a two-tower network produces a user embedding and pre-computed movie embeddings; inference is a dot product with no retraining on demand
+- **Onboarding flow** - new users select genre preferences, age range, gender, and region on Step 1, then rate up to 10 movies across 12 genres on Step 2 to cold-start the model
+- **Live updates** - marking a movie as watched fine-tunes your UserNet immediately via Celery and refills the list to 10
 - **Watched history** - full watch history with your star ratings and dates
 - **Account management** - avatar dropdown with settings modal; account deletion wipes all personal data from the database
-- **200-movie catalog** - seeded from TMDB's top-rated English films with posters, cast, director, and genre
+- **1,000-movie catalog** - seeded from TMDB's top-rated English films across 12 genres with posters, cast, director, and description
 
 ---
 
@@ -29,48 +31,58 @@ A full-stack personalized movie recommendation app that trains a per-user PyTorc
 │  /api/auth/   /api/onboarding/   /api/recommendations/  │
 │  /api/ratings/   /api/watched/   /api/auth/delete-account│
 └───────┬──────────────────────────────────┬──────────────┘
-        │ enqueue retrain job              │ load cached weights
+        │ enqueue fine-tune job            │ load cached UserNet
         ▼                                  ▼
 ┌───────────────┐                 ┌────────────────┐
 │  Celery       │  train & cache  │  Redis         │
-│  Worker       │────────────────▶│  model weights │
-│  (retraining) │                 │  + task queue  │
+│  Worker       │────────────────▶│  UserNet       │
+│  (fine-tune)  │                 │  weights/user  │
 └───────────────┘                 └────────────────┘
         │
         ▼
-┌───────────────────────┐
-│   RecommenderNet      │
-│   16 inputs → 1 out   │
-│   (like probability)  │
-└───────────┬───────────┘
-            │
-┌───────────▼───────────┐
-│  PostgreSQL            │
-│  Movie, Rating,        │
-│  UserProfile           │
-└───────────────────────┘
+┌─────────────────────────────────────────┐
+│           Two-Tower Network             │
+│  UserNet     42 -> 128 -> 64 -> 32      │
+│  MovieNet    14 -> 64 -> 32             │
+│  Score = sigmoid(V_u . V_m)             │
+└───────────────┬─────────────────────────┘
+                │
+┌───────────────▼───────────┐
+│  PostgreSQL               │
+│  Movie (+ embedding[32])  │
+│  Rating, UserProfile      │
+└───────────────────────────┘
 ```
 
 ---
 
 ## Neural Network Model
 
-**Architecture:** 3-layer MLP with dropout (12 → 64 → 32 → 1)
+**Architecture:** Two-tower network. UserNet and MovieNet each output 32-dim embeddings. Final score = sigmoid(V_u . V_m).
 
-**Input features (12 total):**
-| Feature Group | Size | Description |
+**Movie features X_m (14 dims):**
+| Feature | Dims | Description |
 |---|---|---|
-| Genre one-hot | 5 | Action, Romance, Sci-Fi, Comedy, Horror |
-| Normalized TMDB rating | 1 | avg_rating / 10 |
-| User genre preference | 5 | Average user rating per genre (normalized) |
-| User overall average | 1 | User's mean rating across all movies |
+| Genre affinity vector | 12 | Row from 12x12 GENRE_AFFINITY matrix |
+| Normalized TMDB rating | 1 | avg_rating / 10.0 |
+| Decade norm | 1 | (decade - 1920) / 100.0 |
 
-**Output:** Probability (0–1) that the user will like the movie
+**User features X_u (42 dims):**
+| Feature | Dims | Description |
+|---|---|---|
+| Per-genre rating averages | 12 | Mean user rating per genre / 5.0 |
+| Onboarding genre picks | 12 | Multi-hot of preferred genres |
+| Overall avg rating | 1 | Mean of all user ratings / 5.0 |
+| Avg decade of liked movies | 1 | decade_norm of liked movies |
+| Age range one-hot | 6 | 13-17, 18-24, 25-34, 35-44, 45-54, 55+ |
+| Gender one-hot | 4 | Male, Female, Non-binary, Prefer not to say |
+| Region one-hot | 6 | Americas, Europe, East Asia, South/SE Asia, Middle East/Africa, Oceania |
 
-**Training:** Adam optimizer (lr=0.01), BCELoss, 300 epochs, Dropout(0.3)
-Ratings 4–5 → liked (1), ratings 1–2 → disliked (0), rating 3 → skipped from training
+**Training - Phase 1 (global):** Train full TwoTowerNet on all user-movie pairs. Loss = MSE on dot product output. Adam lr=0.001, weight_decay=1e-4, 100 epochs. Ratings >= 4 -> 1.0, <= 2 -> 0.0, 3 skipped. After training, run all movies through MovieNet and store 32-dim embeddings in Movie.embedding.
 
-**Fallback:** If fewer than 3 ratings or fewer than 2 labeled examples exist, recommendations fall back to global TMDB average rating ranking.
+**Training - Phase 2 (per-user):** Fine-tune only UserNet (MovieNet frozen) on that user's ratings. 60 epochs. Cache UserNet weights in Redis (key: flickpick_user_net_{user_id}, TTL 24h).
+
+**Cold start (< 3 ratings):** Build V_u as weighted average of genre affinity vectors from onboarding genre picks. Score by dot product against stored Movie.embedding. No network inference.
 
 ---
 
@@ -80,31 +92,37 @@ Ratings 4–5 → liked (1), ratings 1–2 → disliked (0), rating 3 → skippe
 .
 ├── backend/
 │   ├── api/
-│   │   ├── models.py               # Movie, Rating, UserProfile
+│   │   ├── models.py               # Movie (+ embedding), Rating, UserProfile
 │   │   ├── views.py                # All API endpoints
 │   │   ├── urls.py
-│   │   ├── ml_model.py             # RecommenderNet, feature engineering, training
+│   │   ├── ml_model.py             # TwoTowerNet, feature engineering, training
+│   │   ├── tasks.py                # Celery: retrain_user_model, retrain_global_model
+│   │   ├── ml/
+│   │   │   └── two_tower_weights.pth  # Global model weights (generated)
 │   │   └── management/
 │   │       └── commands/
-│   │           └── seed_movies.py  # Seeds initial 30 curated movies
+│   │           ├── seed_movies.py
+│   │           └── compute_movie_embeddings.py
 │   ├── backend/
 │   │   └── settings.py
-│   ├── fetch_movies.py             # Fetches top 200 movies from TMDB API
+│   ├── fetch_movies.py             # Fetches top 1000 movies from TMDB API
 │   ├── .env.example
 │   └── manage.py
 ├── frontend/
 │   └── src/
 │       ├── App.js
 │       ├── pages/
-│       │   ├── WelcomePage.jsx     # Login / register
-│       │   ├── OnboardingPage.jsx  # Initial 10-movie rating flow
+│       │   ├── WelcomePage.jsx
+│       │   ├── OnboardingPage.jsx  # Step 1: profile, Step 2: movie carousel
 │       │   └── RecommendationsPage.jsx
 │       └── components/
 │           ├── Logo.jsx
-│           ├── AvatarMenu.jsx      # Header dropdown (Settings, Log Out)
-│           ├── SettingsModal.jsx   # Account deletion
-│           ├── RatingModal.jsx     # Star rating after watching
+│           ├── AvatarMenu.jsx
+│           ├── SettingsModal.jsx
+│           ├── RatingModal.jsx
 │           └── StarRating.jsx
+├── docs/
+│   └── model-history.md
 ├── .gitignore
 └── README.md
 ```
@@ -138,26 +156,32 @@ pip install django djangorestframework djangorestframework-simplejwt django-cors
 ```bash
 cd backend
 python manage.py migrate
-python manage.py seed_movies       # seeds 30 curated onboarding movies
-python fetch_movies.py             # fetches top 200 from TMDB (optional but recommended)
+python manage.py seed_movies       # seeds curated onboarding movies
+python fetch_movies.py             # fetches top 1000 from TMDB (recommended)
 ```
 
-### 4. Start Redis
+### 4. Train the global model and compute embeddings
+
+```bash
+cd backend
+python manage.py shell -c "from api.ml_model import train_global_model; import torch, os; m = train_global_model(); torch.save(m.state_dict(), 'api/ml/two_tower_weights.pth') if m else None"
+python manage.py compute_movie_embeddings
+```
+
+### 5. Start Redis
 
 ```bash
 redis-server
 ```
 
-### 5. Start the Celery worker
+### 6. Start the Celery worker
 
 ```bash
 cd backend
 celery -A backend worker --loglevel=info
 ```
 
-The worker listens for retraining jobs enqueued after each rating submission and caches model weights in Redis.
-
-### 6. Start the Django backend
+### 7. Start the Django backend
 
 ```bash
 python manage.py runserver
@@ -165,7 +189,7 @@ python manage.py runserver
 
 API available at `http://127.0.0.1:8000/api/`
 
-### 7. Start the React frontend
+### 8. Start the React frontend
 
 ```bash
 cd frontend
@@ -191,8 +215,8 @@ App opens at `http://localhost:3000`
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/onboarding/` | Submit onboarding ratings |
-| `POST` | `/api/ratings/` | Rate a watched movie (1–5 stars) |
+| `POST` | `/api/onboarding/` | Submit onboarding ratings + profile fields |
+| `POST` | `/api/ratings/` | Rate a watched movie (1-5 stars) |
 | `GET` | `/api/recommendations/` | Get top 10 personalized picks |
 | `GET` | `/api/watched/` | Get full watch history |
 
@@ -227,39 +251,31 @@ Authorization: Bearer <token>
 
 The current implementation is designed for a single server with a small user base. Here's how the architecture would evolve to handle 100k+ users:
 
-### Bottleneck 1 - Per-request model retraining
-**Problem:** The ML model retrains from scratch on every `/api/recommendations/` call. At scale this would be unusably slow and CPU-bound.
+### Bottleneck 1 - Global model retraining frequency
+**Problem:** The global TwoTowerNet must be retrained offline as new rating data accumulates. Per-user fine-tuning is fast but depends on current MovieNet weights.
 
-**Implemented:** Rating submissions enqueue a **Celery** background task that retrains the model and stores the serialized weights in **Redis** (24-hour TTL). The recommendations endpoint loads from the cache rather than retraining on the fly, falling back to synchronous training only on a cache miss. Cold users (< 3 ratings or < 2 labeled examples) skip training and fall back to global TMDB ranking.
+**Implemented:** Rating submissions enqueue a Celery background task that fine-tunes only UserNet (MovieNet frozen) and stores the serialized weights in Redis (24-hour TTL). Global retraining is a separate `retrain_global_model` Celery task that can be scheduled nightly or triggered manually.
 
-### Bottleneck 2 - SQLite
-**Problem:** SQLite has no connection pooling and locks on writes, so two users submitting ratings simultaneously would fail.
+### Bottleneck 2 - Embedding lookup at inference
+**Problem:** Dot product against all Movie.embedding rows in PostgreSQL could be slow at 100k+ movies.
 
 **Solution:**
-- Migrate to **PostgreSQL** with connection pooling (PgBouncer). Schema is already migration-ready via Django ORM.
-- Add database indexes on `Rating.user_id` and `Movie.genre`, which are the two most-queried columns.
+- Move embeddings to an approximate nearest-neighbor index (FAISS or pgvector) for sub-millisecond retrieval.
+- Pre-filter candidates by genre before the dot product pass to reduce the search space.
 
 ### Bottleneck 3 - Single server
-**Problem:** One Django process handles all requests with no horizontal scaling, making it a single point of failure.
+**Problem:** One Django process handles all requests with no horizontal scaling.
 
 **Solution:**
-- Containerize with **Docker**, deploy behind a load balancer (NGINX) with multiple Django workers (Gunicorn).
-- Separate the ML inference service from the web API so compute-heavy retraining doesn't block auth or rating endpoints.
-- Serve static assets and movie posters through a **CDN** instead of the app server.
-
-### Bottleneck 4 - ML model quality
-**Problem:** The per-user MLP trained on 14 features works for small datasets but doesn't capture user-to-user similarity.
-
-**Solution:**
-- Add **collaborative filtering**, where users who rated movies similarly to you inform your recommendations even for movies you haven't seen.
-- Replace genre one-hot encoding with **learned embeddings** that capture richer movie relationships.
-- Implement **offline evaluation** with precision@k and recall@k metrics to measure recommendation quality before shipping model changes.
+- Containerize with Docker, deploy behind NGINX with multiple Gunicorn workers.
+- Separate the ML fine-tune service from the web API.
+- Serve static assets through a CDN.
 
 ### Revised architecture at scale
 
 ```
                          ┌─────────────┐
-                         │   CDN       │  ← static assets, posters
+                         │   CDN       │  <- static assets, posters
                          └─────────────┘
                                 │
 ┌──────────┐    HTTPS    ┌──────▼───────┐
@@ -269,7 +285,7 @@ The current implementation is designed for a single server with a small user bas
               ┌─────────────────┼─────────────────┐
               ▼                 ▼                 ▼
         ┌──────────┐     ┌──────────┐     ┌──────────┐
-        │ Django   │     │ Django   │     │ Django   │  ← Gunicorn workers
+        │ Django   │     │ Django   │     │ Django   │  <- Gunicorn workers
         └────┬─────┘     └────┬─────┘     └────┬─────┘
              └────────────────┼────────────────┘
                               │
@@ -278,8 +294,8 @@ The current implementation is designed for a single server with a small user bas
        ┌────────────┐  ┌────────────┐  ┌────────────┐
        │ PostgreSQL │  │   Redis    │  │  Celery    │
        │  (primary) │  │  (cache +  │  │  workers   │
-       │ + replica  │  │   queue)   │  │ (retraining│
-       └────────────┘  └────────────┘  │  jobs)     │
+       │ + replica  │  │   queue)   │  │ (fine-tune │
+       └────────────┘  └────────────┘  │  + global) │
                                        └────────────┘
 ```
 
@@ -292,8 +308,8 @@ The current implementation is designed for a single server with a small user bas
 | Frontend | React 18, React Router v7, CSS |
 | Backend | Python 3.9, Django 4.2, Django REST Framework |
 | Auth | djangorestframework-simplejwt (JWT) |
-| ML | PyTorch 2.x |
+| ML | PyTorch 2.x (Two-Tower: global training + per-user fine-tuning) |
 | Async tasks | Celery + Redis |
-| Model cache | Redis |
+| Model cache | Redis (UserNet weights per user, TTL 24h) |
 | Movie data | TMDB API |
-| Database | PostgreSQL |
+| Database | PostgreSQL (Movie.embedding stored as JSON) |
