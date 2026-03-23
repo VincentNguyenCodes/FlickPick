@@ -265,3 +265,75 @@ def _cold_start_scores(user, candidates):
         score = sum(v_u[i] * emb[i] for i in range(12))
         scored.append((score, movie))
     return scored
+
+
+def get_recommendations(user, top_k=10, genre=None):
+    import pickle
+    import base64
+    from django.core.cache import cache
+
+    rated_ids = set(Rating.objects.filter(user=user).values_list('movie_id', flat=True))
+    candidates = list(Movie.objects.exclude(id__in=rated_ids))
+    if genre:
+        candidates = [m for m in candidates if m.genre == genre]
+
+    rating_count = Rating.objects.filter(user=user).count()
+
+    if rating_count < 3:
+        scored = _cold_start_scores(user, candidates)
+    else:
+        user_net = None
+        cached = cache.get(f'flickpick_user_net_{user.id}')
+        if cached:
+            try:
+                user_net = UserNet()
+                user_net.load_state_dict(pickle.loads(base64.b64decode(cached)))
+                user_net.eval()
+            except Exception:
+                user_net = None
+
+        if user_net is None:
+            scored = _cold_start_scores(user, candidates)
+        else:
+            scored = []
+            with torch.no_grad():
+                x_u = torch.tensor([build_user_features(user)], dtype=torch.float32)
+                v_u = user_net(x_u).squeeze(0)
+                for movie in candidates:
+                    if movie.embedding:
+                        v_m = torch.tensor(movie.embedding, dtype=torch.float32)
+                        score = (v_u * v_m).sum().item()
+                    else:
+                        score = movie.avg_rating / 10.0
+                    scored.append((score, movie))
+
+    scored.sort(key=lambda t: t[0], reverse=True)
+    top = scored[:top_k]
+
+    raw_scores = [s for s, _ in top]
+    if not raw_scores:
+        return []
+    lo, hi = min(raw_scores), max(raw_scores)
+    score_range = hi - lo
+
+    def normalize(s):
+        if score_range < 0.01:
+            return round(s * 100)
+        return round(60 + (s - lo) / score_range * 37)
+
+    results = []
+    for rank, (score, movie) in enumerate(top, 1):
+        results.append({
+            'id': movie.id,
+            'title': movie.title,
+            'year': movie.year,
+            'genre': movie.genre,
+            'director': movie.director,
+            'cast': movie.cast,
+            'rating': movie.avg_rating,
+            'poster': movie.poster_url,
+            'description': movie.description,
+            'match': normalize(score),
+        })
+
+    return results
