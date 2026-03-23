@@ -12,6 +12,7 @@ class Movie(models.Model):
     avg_rating = models.FloatField()
     poster_url = models.URLField(max_length=500)
     description = models.TextField(blank=True)
+    embedding = models.JSONField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.title} ({self.year})"
