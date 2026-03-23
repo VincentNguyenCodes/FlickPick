@@ -155,7 +155,7 @@ def train_global_model(epochs=100, lr=0.001, l2=1e-4):
     labeled = [(r, 1.0) for r in all_ratings if r.rating >= RATING_LIKE_THRESHOLD]
     labeled += [(r, 0.0) for r in all_ratings if r.rating <= RATING_DISLIKE_THRESHOLD]
 
-    if len(labeled) < 4:
+    if len(labeled) < MIN_LABELED_GLOBAL:
         return None
 
     X_u, X_m, y = [], [], []
