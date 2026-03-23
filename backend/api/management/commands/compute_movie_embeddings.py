@@ -33,5 +33,9 @@ class Command(BaseCommand):
             if k.startswith('movie_net.')
         }
 
+        from api.models import Movie
+        count_before = Movie.objects.filter(embedding__isnull=True).count()
         compute_all_movie_embeddings(movie_net_state)
-        self.stdout.write('Done computing movie embeddings.')
+        count_after = Movie.objects.filter(embedding__isnull=True).count()
+        total = Movie.objects.count()
+        self.stdout.write(f'Done. {total} movies processed, {count_before - count_after} embeddings newly written.')
