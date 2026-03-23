@@ -122,6 +122,18 @@ def get_animated(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def get_profile(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    return Response({
+        'preferred_genres': profile.preferred_genres,
+        'age_range': profile.age_range,
+        'gender': profile.gender,
+        'region': profile.region,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_watched(request):
     ratings = (
         Rating.objects
