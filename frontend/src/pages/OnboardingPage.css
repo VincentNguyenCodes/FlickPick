@@ -376,3 +376,23 @@
   color: var(--text-secondary);
   cursor: not-allowed;
 }
+
+@media (max-width: 600px) {
+  .profile-step {
+    padding: 0 16px 40px;
+    margin-top: 24px;
+  }
+
+  .profile-title {
+    font-size: 1.4rem;
+  }
+
+  .genre-chips {
+    gap: 6px;
+  }
+
+  .genre-chip {
+    font-size: 0.82rem;
+    padding: 6px 12px;
+  }
+}
