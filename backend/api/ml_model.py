@@ -182,8 +182,8 @@ def train_global_model(epochs=100, lr=0.001, l2=1e-4):
 
 def train_user_net(user, movie_net_state, epochs=60, lr=0.001, l2=1e-4):
     ratings = list(Rating.objects.filter(user=user).select_related('movie'))
-    labeled = [(r, 1.0) for r in ratings if r.rating >= 4]
-    labeled += [(r, 0.0) for r in ratings if r.rating <= 2]
+    labeled = [(r, 1.0) for r in ratings if r.rating >= RATING_LIKE_THRESHOLD]
+    labeled += [(r, 0.0) for r in ratings if r.rating <= RATING_DISLIKE_THRESHOLD]
 
     if len(labeled) < 2:
         return None
