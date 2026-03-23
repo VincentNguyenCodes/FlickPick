@@ -170,3 +170,48 @@ def train_global_model(epochs=100, lr=0.001, l2=1e-4):
         optimizer.step()
 
     return model
+
+
+def train_user_net(user, movie_net_state, epochs=60, lr=0.001, l2=1e-4):
+    ratings = list(Rating.objects.filter(user=user).select_related('movie'))
+    labeled = [(r, 1.0) for r in ratings if r.rating >= 4]
+    labeled += [(r, 0.0) for r in ratings if r.rating <= 2]
+
+    if len(labeled) < 2:
+        return None
+
+    movie_net = MovieNet()
+    movie_net.load_state_dict(movie_net_state)
+    movie_net.eval()
+    for param in movie_net.parameters():
+        param.requires_grad = False
+
+    user_net = UserNet()
+
+    X_u, X_m_emb, y = [], [], []
+    with torch.no_grad():
+        for r, label in labeled:
+            x_m = torch.tensor([movie_to_vector(r.movie)], dtype=torch.float32)
+            emb = movie_net(x_m).squeeze(0).tolist()
+            X_u.append(build_user_features(user))
+            X_m_emb.append(emb)
+            y.append(label)
+
+    X_u_t = torch.tensor(X_u, dtype=torch.float32)
+    X_m_t = torch.tensor(X_m_emb, dtype=torch.float32)
+    y_t = torch.tensor(y, dtype=torch.float32).unsqueeze(1)
+
+    optimizer = torch.optim.Adam(user_net.parameters(), lr=lr, weight_decay=l2)
+    criterion = nn.MSELoss()
+
+    user_net.train()
+    for _ in range(epochs):
+        optimizer.zero_grad()
+        v_u = user_net(X_u_t)
+        dot = (v_u * X_m_t).sum(dim=1, keepdim=True)
+        pred = torch.sigmoid(dot)
+        loss = criterion(pred, y_t)
+        loss.backward()
+        optimizer.step()
+
+    return user_net
