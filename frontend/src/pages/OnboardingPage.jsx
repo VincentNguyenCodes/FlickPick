@@ -191,6 +191,11 @@ function OnboardingPage() {
         },
         body: JSON.stringify({
           ratings: finalRatings,
+          movies_data: Object.fromEntries(
+            queue
+              .filter((m) => finalRatings[m.id] !== undefined)
+              .map((m) => [m.id, m])
+          ),
           preferred_genres: selectedGenres,
           age_range: ageRange,
           gender: gender,
