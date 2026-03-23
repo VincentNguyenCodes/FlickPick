@@ -290,7 +290,7 @@ def get_recommendations(user, top_k=10, genre=None):
 
     rating_count = Rating.objects.filter(user=user).count()
 
-    if rating_count < 3:
+    if rating_count < MIN_RATINGS_FOR_USER_NET:
         scored = _cold_start_scores(user, candidates)
     else:
         user_net = None
