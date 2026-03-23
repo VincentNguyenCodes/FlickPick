@@ -335,7 +335,7 @@ def get_recommendations(user, top_k=10, genre=None):
     def normalize(s):
         if score_range < 0.01:
             return round(s * 100)
-        return round(60 + (s - lo) / score_range * 37)
+        return round(MATCH_SCORE_MIN + (s - lo) / score_range * MATCH_SCORE_RANGE)
 
     results = []
     for rank, (score, movie) in enumerate(top, 1):
