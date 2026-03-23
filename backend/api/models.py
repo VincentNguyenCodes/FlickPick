@@ -14,6 +14,11 @@ class Movie(models.Model):
     description = models.TextField(blank=True)
     embedding = models.JSONField(null=True, blank=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['genre']),
+        ]
+
     def __str__(self):
         return f"{self.title} ({self.year})"
 
