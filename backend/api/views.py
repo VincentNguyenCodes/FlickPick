@@ -64,6 +64,10 @@ def onboarding(request):
 
     profile, _ = UserProfile.objects.get_or_create(user=user)
     profile.onboarded = True
+    profile.preferred_genres = request.data.get('preferred_genres', [])
+    profile.age_range = request.data.get('age_range', '')
+    profile.gender = request.data.get('gender', '')
+    profile.region = request.data.get('region', '')
     profile.save()
 
     retrain_user_model.delay(user.id)
