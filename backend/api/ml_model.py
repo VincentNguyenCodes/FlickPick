@@ -289,49 +289,61 @@ def get_recommendations(user, top_k=10, genre=None):
     from django.core.cache import cache
 
     rated_ids = set(Rating.objects.filter(user=user).values_list('movie_id', flat=True))
-    candidates = list(Movie.objects.exclude(id__in=rated_ids))
-    if genre:
-        candidates = [m for m in candidates if m.genre == genre]
 
-    rating_count = Rating.objects.filter(user=user).count()
-
-    if rating_count < MIN_RATINGS_FOR_USER_NET:
-        scored = _cold_start_scores(user, candidates)
+    if genre == 'Animation':
+        candidates = list(Movie.objects.filter(genre='Animation').exclude(id__in=rated_ids))
+        scored = [(m.avg_rating / 10.0, m) for m in candidates]
+        scored.sort(key=lambda t: t[0], reverse=True)
+        top = scored[:top_k]
+        if len(top) < top_k:
+            scored_ids = {m.id for _, m in top}
+            for movie in Movie.objects.filter(genre='Animation').exclude(id__in=rated_ids).exclude(id__in=scored_ids).order_by('-avg_rating')[:top_k - len(top)]:
+                top.append((movie.avg_rating / 10.0, movie))
     else:
-        user_net = None
-        cached = cache.get(f'flickpick_user_net_{user.id}')
-        if cached:
-            try:
-                user_net = UserNet()
-                user_net.load_state_dict(pickle.loads(base64.b64decode(cached)))
-                user_net.eval()
-            except Exception:
-                user_net = None
+        candidates = list(Movie.objects.exclude(id__in=rated_ids).exclude(genre='Animation'))
+        if genre:
+            candidates = [m for m in candidates if m.genre == genre]
 
-        if user_net is None:
+        rating_count = Rating.objects.filter(user=user).count()
+
+        if rating_count < MIN_RATINGS_FOR_USER_NET:
             scored = _cold_start_scores(user, candidates)
         else:
-            scored = []
-            with torch.no_grad():
-                x_u = torch.tensor([build_user_features(user)], dtype=torch.float32)
-                v_u = user_net(x_u).squeeze(0)
-                for movie in candidates:
-                    if movie.embedding:
-                        v_m = torch.tensor(movie.embedding, dtype=torch.float32)
-                        score = (v_u * v_m).sum().item()
-                    else:
-                        score = movie.avg_rating / 10.0
-                    scored.append((score, movie))
+            user_net = None
+            cached = cache.get(f'flickpick_user_net_{user.id}')
+            if cached:
+                try:
+                    user_net = UserNet()
+                    user_net.load_state_dict(pickle.loads(base64.b64decode(cached)))
+                    user_net.eval()
+                except Exception:
+                    user_net = None
 
-    scored.sort(key=lambda t: t[0], reverse=True)
-    top = scored[:top_k]
+            if user_net is None:
+                scored = _cold_start_scores(user, candidates)
+            else:
+                scored = []
+                with torch.no_grad():
+                    x_u = torch.tensor([build_user_features(user)], dtype=torch.float32)
+                    v_u = user_net(x_u).squeeze(0)
+                    for movie in candidates:
+                        if movie.embedding:
+                            v_m = torch.tensor(movie.embedding, dtype=torch.float32)
+                            score = (v_u * v_m).sum().item()
+                        else:
+                            score = movie.avg_rating / 10.0
+                        scored.append((score, movie))
 
-    if len(top) < top_k:
-        scored_ids = {m.id for _, m in top}
-        fallback = Movie.objects.exclude(id__in=rated_ids).exclude(id__in=scored_ids)
-        needed = top_k - len(top)
-        for movie in fallback.order_by('-avg_rating')[:needed]:
-            top.append((movie.avg_rating / 10.0, movie))
+        scored.sort(key=lambda t: t[0], reverse=True)
+        top = scored[:top_k]
+
+        if len(top) < top_k:
+            scored_ids = {m.id for _, m in top}
+            fallback = Movie.objects.exclude(id__in=rated_ids).exclude(id__in=scored_ids).exclude(genre='Animation')
+            if genre:
+                fallback = fallback.filter(genre=genre)
+            for movie in fallback.order_by('-avg_rating')[:top_k - len(top)]:
+                top.append((movie.avg_rating / 10.0, movie))
 
     raw_scores = [s for s, _ in top]
     if not raw_scores:
