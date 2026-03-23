@@ -10,4 +10,5 @@ urlpatterns = [
     path('watched/', views.get_watched),
     path('auth/delete-account/', views.delete_account),
     path('recommendations/animated/', views.get_animated),
+    path('profile/', views.get_profile),
 ]
