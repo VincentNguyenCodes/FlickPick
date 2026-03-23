@@ -108,3 +108,17 @@ class UserNet(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+
+
+class MovieNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(14, 64),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(64, 32),
+        )
+
+    def forward(self, x):
+        return self.net(x)
