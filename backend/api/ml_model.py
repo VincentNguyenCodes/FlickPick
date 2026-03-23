@@ -18,6 +18,9 @@ MOVIE_FEATURE_DIM = 14
 USER_FEATURE_DIM = NUM_GENRES * 2 + 2 + len(AGE_RANGES) + len(GENDERS) + len(REGIONS)
 EMBEDDING_DIM = 32
 
+RATING_LIKE_THRESHOLD = 4
+RATING_DISLIKE_THRESHOLD = 2
+
 
 def decade_norm(year):
     decade = (year // 10) * 10
