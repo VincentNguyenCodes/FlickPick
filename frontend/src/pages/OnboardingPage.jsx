@@ -306,7 +306,7 @@ function OnboardingPage() {
           )}
         </div>
 
-        <div className="center-card" onScroll={(e) => setScrolled(e.target.scrollTop > 40)}>
+        <div className="center-card" ref={cardRef} onScroll={(e) => setScrolled(e.target.scrollTop > 40)}>
           <div className="poster-wrapper">
             <img src={movie.poster} alt={movie.title} className="center-poster" />
             <div className={`details-overlay ${scrolled ? 'visible' : ''}`}>
