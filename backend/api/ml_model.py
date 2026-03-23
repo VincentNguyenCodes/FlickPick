@@ -215,3 +215,17 @@ def train_user_net(user, movie_net_state, epochs=60, lr=0.001, l2=1e-4):
         optimizer.step()
 
     return user_net
+
+
+def compute_all_movie_embeddings(movie_net_state):
+    movie_net = MovieNet()
+    movie_net.load_state_dict(movie_net_state)
+    movie_net.eval()
+
+    movies = Movie.objects.all()
+    with torch.no_grad():
+        for movie in movies:
+            x = torch.tensor([movie_to_vector(movie)], dtype=torch.float32)
+            emb = movie_net(x).squeeze(0).tolist()
+            movie.embedding = emb
+            movie.save(update_fields=['embedding'])
