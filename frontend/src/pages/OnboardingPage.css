@@ -432,3 +432,8 @@
 .profile-section + .profile-section {
   margin-top: -8px;
 }
+
+.profile-field select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
