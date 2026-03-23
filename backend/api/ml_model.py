@@ -101,7 +101,7 @@ class UserNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(42, 128),
+            nn.Linear(USER_FEATURE_DIM, 128),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(128, 64),
