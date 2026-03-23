@@ -24,6 +24,9 @@ MIN_RATINGS_FOR_USER_NET = 3
 MIN_LABELED_GLOBAL = 4
 MIN_LABELED_USER = 2
 
+MATCH_SCORE_MIN = 60
+MATCH_SCORE_RANGE = 37
+
 
 def decade_norm(year):
     decade = (year // 10) * 10
