@@ -147,6 +147,7 @@ function OnboardingPage() {
     setRatings(newRatings);
     setSelectedRating(0);
     setScrolled(false);
+    if (cardRef.current) cardRef.current.scrollTop = 0;
     goNext(newRatings);
   };
 
@@ -165,6 +166,7 @@ function OnboardingPage() {
     setTotalShown(totalShown + 1);
     setSelectedRating(0);
     setScrolled(false);
+    if (cardRef.current) cardRef.current.scrollTop = 0;
     goNext(ratings, newQueue);
   };
 
