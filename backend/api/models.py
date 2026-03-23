@@ -34,6 +34,10 @@ class Rating(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     onboarded = models.BooleanField(default=False)
+    preferred_genres = models.JSONField(default=list)
+    age_range = models.CharField(max_length=20, blank=True, default='')
+    gender = models.CharField(max_length=30, blank=True, default='')
+    region = models.CharField(max_length=50, blank=True, default='')
 
     def __str__(self):
         return self.user.username
