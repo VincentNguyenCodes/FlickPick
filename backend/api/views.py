@@ -121,6 +121,13 @@ def get_animated(request):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
+def get_genres(request):
+    from .ml_model import GENRES
+    return Response({'genres': GENRES})
+
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_profile(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
