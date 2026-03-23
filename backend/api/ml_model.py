@@ -33,3 +33,10 @@ GENRE_AFFINITY = {
     'War':       [0.4, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.3, 0.0, 1.0, 0.0],
     'Animation': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.0, 0.2, 0.3, 0.0, 1.0],
 }
+
+
+def movie_to_vector(movie):
+    affinity = GENRE_AFFINITY.get(movie.genre, [0.0] * 12)
+    rating_norm = movie.avg_rating / 10.0
+    year_norm = decade_norm(movie.year)
+    return affinity + [rating_norm, year_norm]
