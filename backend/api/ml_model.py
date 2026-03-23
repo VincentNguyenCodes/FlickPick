@@ -243,7 +243,7 @@ def compute_all_movie_embeddings(movie_net_state, batch_size=256):
 
 def _cold_start_scores(user, candidates):
     ratings = list(Rating.objects.filter(user=user).select_related('movie'))
-    liked = [r.movie for r in ratings if r.rating >= 4]
+    liked = [r.movie for r in ratings if r.rating >= RATING_LIKE_THRESHOLD]
 
     if not liked:
         try:
