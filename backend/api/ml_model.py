@@ -118,7 +118,7 @@ class MovieNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(14, 64),
+            nn.Linear(MOVIE_FEATURE_DIM, 64),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(64, 32),
