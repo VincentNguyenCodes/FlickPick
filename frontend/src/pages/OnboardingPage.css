@@ -86,7 +86,7 @@
 
 /* Center card */
 .center-card {
-  width: 360px;
+  width: 420px;
   flex-shrink: 0;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -97,6 +97,12 @@
   box-shadow: 0 12px 48px rgba(0,0,0,0.6);
   position: relative;
   z-index: 2;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.center-card::-webkit-scrollbar {
+  display: none;
 }
 
 .poster-wrapper {
