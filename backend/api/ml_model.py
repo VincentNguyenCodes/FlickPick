@@ -252,8 +252,10 @@ def _cold_start_scores(user, candidates):
 
     v_u = [0.0] * 12
 
-    if ratings:
-        for r in ratings:
+    live_action_ratings = [r for r in ratings if not r.movie.is_animated]
+
+    if live_action_ratings:
+        for r in live_action_ratings:
             weight = (r.rating - 3) / 2.0
             aff = GENRE_AFFINITY.get(r.movie.genre, [0.0] * 12)
             for i in range(12):
@@ -274,11 +276,11 @@ def _cold_start_scores(user, candidates):
 
     scored = []
     for movie in candidates:
-        if movie.embedding:
-            emb = movie.embedding[:12]
-        else:
-            emb = GENRE_AFFINITY.get(movie.genre, [0.0] * 12)
-        score = sum(v_u[i] * emb[i] for i in range(12))
+        emb = GENRE_AFFINITY.get(movie.genre, [0.0] * 12)
+        emb_norm = (sum(x * x for x in emb) ** 0.5) or 1.0
+        emb_unit = [x / emb_norm for x in emb]
+        genre_score = sum(v_u[i] * emb_unit[i] for i in range(12))
+        score = genre_score * 0.5 + (movie.avg_rating / 10.0) * 0.5
         scored.append((score, movie))
     return scored
 
@@ -335,7 +337,23 @@ def get_recommendations(user, top_k=10, genre=None):
                         scored.append((score, movie))
 
         scored.sort(key=lambda t: t[0], reverse=True)
-        top = scored[:top_k]
+        top = []
+        genre_counts = {}
+        max_per_genre = max(2, top_k // len(GENRES) + 1)
+        for score, movie in scored:
+            g = movie.genre
+            if genre_counts.get(g, 0) < max_per_genre:
+                top.append((score, movie))
+                genre_counts[g] = genre_counts.get(g, 0) + 1
+            if len(top) == top_k:
+                break
+        if len(top) < top_k:
+            in_top = {m.id for _, m in top}
+            for score, movie in scored:
+                if movie.id not in in_top:
+                    top.append((score, movie))
+                    if len(top) == top_k:
+                        break
 
         if len(top) < top_k:
             scored_ids = {m.id for _, m in top}
