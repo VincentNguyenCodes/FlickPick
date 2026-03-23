@@ -222,18 +222,20 @@ def train_user_net(user, movie_net_state, epochs=60, lr=0.001, l2=1e-4):
     return user_net
 
 
-def compute_all_movie_embeddings(movie_net_state):
+def compute_all_movie_embeddings(movie_net_state, batch_size=256):
     movie_net = MovieNet()
     movie_net.load_state_dict(movie_net_state)
     movie_net.eval()
 
-    movies = Movie.objects.all()
+    movies = list(Movie.objects.all())
     with torch.no_grad():
-        for movie in movies:
-            x = torch.tensor([movie_to_vector(movie)], dtype=torch.float32)
-            emb = movie_net(x).squeeze(0).tolist()
-            movie.embedding = emb
-            movie.save(update_fields=['embedding'])
+        for i in range(0, len(movies), batch_size):
+            batch = movies[i:i + batch_size]
+            X = torch.tensor([movie_to_vector(m) for m in batch], dtype=torch.float32)
+            embeddings = movie_net(X).tolist()
+            for movie, emb in zip(batch, embeddings):
+                movie.embedding = emb
+            Movie.objects.bulk_update(batch, ['embedding'])
 
 
 def _cold_start_scores(user, candidates):
