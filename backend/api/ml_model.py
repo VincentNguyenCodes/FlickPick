@@ -229,3 +229,39 @@ def compute_all_movie_embeddings(movie_net_state):
             emb = movie_net(x).squeeze(0).tolist()
             movie.embedding = emb
             movie.save(update_fields=['embedding'])
+
+
+def _cold_start_scores(user, candidates):
+    ratings = list(Rating.objects.filter(user=user).select_related('movie'))
+    liked = [r.movie for r in ratings if r.rating >= 4]
+
+    if not liked:
+        try:
+            preferred = user.profile.preferred_genres or []
+        except Exception:
+            preferred = []
+        v_u = [0.0] * 12
+        for g in preferred:
+            aff = GENRE_AFFINITY.get(g, [0.0] * 12)
+            for i in range(12):
+                v_u[i] += aff[i]
+        norm = sum(v_u) or 1.0
+        v_u = [x / norm for x in v_u]
+    else:
+        v_u = [0.0] * 12
+        for m in liked:
+            aff = GENRE_AFFINITY.get(m.genre, [0.0] * 12)
+            for i in range(12):
+                v_u[i] += aff[i]
+        norm = sum(v_u) or 1.0
+        v_u = [x / norm for x in v_u]
+
+    scored = []
+    for movie in candidates:
+        if movie.embedding:
+            emb = movie.embedding[:12]
+        else:
+            emb = GENRE_AFFINITY.get(movie.genre, [0.0] * 12)
+        score = sum(v_u[i] * emb[i] for i in range(12))
+        scored.append((score, movie))
+    return scored
