@@ -63,7 +63,7 @@ def build_user_features(user):
         if g in genre_totals:
             genre_totals[g].append(r.rating)
         all_ratings.append(r.rating)
-        if r.rating >= 4:
+        if r.rating >= RATING_LIKE_THRESHOLD:
             liked_decades.append(decade_norm(r.movie.year))
 
     genre_avgs = []
