@@ -55,6 +55,9 @@ Thumbs.db
 /package.json
 /package-lock.json
 
+# ── ML model weights ─────────────────────────────
+*.pth
+
 # ── Misc ─────────────────────────────────────────
 *.bak
 *.tmp
