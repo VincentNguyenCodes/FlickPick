@@ -108,7 +108,7 @@ class UserNet(nn.Module):
             nn.Linear(128, 64),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(64, 32),
+            nn.Linear(64, EMBEDDING_DIM),
         )
 
     def forward(self, x):
@@ -122,7 +122,7 @@ class MovieNet(nn.Module):
             nn.Linear(MOVIE_FEATURE_DIM, 64),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(64, 32),
+            nn.Linear(64, EMBEDDING_DIM),
         )
 
     def forward(self, x):
