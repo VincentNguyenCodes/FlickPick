@@ -9,6 +9,8 @@ from django.contrib.auth.models import User
 
 USER_NET_CACHE_KEY = 'flickpick_user_net_{user_id}'
 USER_NET_CACHE_TTL = 86400
+GLOBAL_MODEL_RETRAIN_EPOCHS = 100
+USER_FINE_TUNE_EPOCHS = 60
 
 WEIGHTS_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
