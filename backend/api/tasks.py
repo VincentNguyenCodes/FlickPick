@@ -33,7 +33,7 @@ def retrain_user_model(user_id):
     }
 
     user = User.objects.get(id=user_id)
-    user_net = train_user_net(user, movie_net_state)
+    user_net = train_user_net(user, movie_net_state, epochs=USER_FINE_TUNE_EPOCHS)
 
     key = USER_NET_CACHE_KEY.format(user_id=user_id)
     if user_net is not None:
@@ -47,7 +47,7 @@ def retrain_user_model(user_id):
 def retrain_global_model():
     from .ml_model import train_global_model, compute_all_movie_embeddings
 
-    model = train_global_model()
+    model = train_global_model(epochs=GLOBAL_MODEL_RETRAIN_EPOCHS)
     if model is None:
         return
 
