@@ -122,3 +122,16 @@ class MovieNet(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+
+
+class TwoTowerNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.user_net = UserNet()
+        self.movie_net = MovieNet()
+
+    def forward(self, x_u, x_m):
+        v_u = self.user_net(x_u)
+        v_m = self.movie_net(x_m)
+        dot = (v_u * v_m).sum(dim=1, keepdim=True)
+        return torch.sigmoid(dot)
