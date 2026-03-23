@@ -249,27 +249,27 @@ def compute_all_movie_embeddings(movie_net_state, batch_size=256):
 
 def _cold_start_scores(user, candidates):
     ratings = list(Rating.objects.filter(user=user).select_related('movie'))
-    liked = [r.movie for r in ratings if r.rating >= RATING_LIKE_THRESHOLD]
 
-    if not liked:
+    v_u = [0.0] * 12
+
+    if ratings:
+        for r in ratings:
+            weight = (r.rating - 3) / 2.0
+            aff = GENRE_AFFINITY.get(r.movie.genre, [0.0] * 12)
+            for i in range(12):
+                v_u[i] += weight * aff[i]
+        magnitude = (sum(x * x for x in v_u) ** 0.5) or 1.0
+        v_u = [x / magnitude for x in v_u]
+    else:
         try:
             preferred = user.profile.preferred_genres or []
         except Exception:
             preferred = []
-        v_u = [0.0] * 12
         for g in preferred:
             aff = GENRE_AFFINITY.get(g, [0.0] * 12)
             for i in range(12):
                 v_u[i] += aff[i]
-        norm = sum(v_u) or 1.0
-        v_u = [x / norm for x in v_u]
-    else:
-        v_u = [0.0] * 12
-        for m in liked:
-            aff = GENRE_AFFINITY.get(m.genre, [0.0] * 12)
-            for i in range(12):
-                v_u[i] += aff[i]
-        norm = sum(v_u) or 1.0
+        norm = sum(abs(x) for x in v_u) or 1.0
         v_u = [x / norm for x in v_u]
 
     scored = []
