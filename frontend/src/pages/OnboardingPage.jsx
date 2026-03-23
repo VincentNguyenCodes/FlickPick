@@ -280,6 +280,10 @@ function OnboardingPage() {
     <div className="onboarding-page">
       <header className="onboarding-header">
         <Logo size="sm" />
+        <div className="step-indicator">
+          <span className="step-dot" />
+          <span className="step-dot active" />
+        </div>
         <div className="progress-info">
           <span>{ratedCount} / 10 rated</span>
           <div className="progress-bar">
