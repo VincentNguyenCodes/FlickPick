@@ -52,15 +52,29 @@ def onboarding(request):
     ratings_data = request.data.get('ratings', {})
     user = request.user
 
+    movies_data = request.data.get('movies_data', {})
+
     for tmdb_id_str, rating_val in ratings_data.items():
-        try:
-            movie = Movie.objects.get(tmdb_id=int(tmdb_id_str))
+        tmdb_id = int(tmdb_id_str)
+        movie = Movie.objects.filter(tmdb_id=tmdb_id).first()
+        if movie is None and tmdb_id_str in movies_data:
+            m = movies_data[tmdb_id_str]
+            movie = Movie.objects.create(
+                tmdb_id=tmdb_id,
+                title=m.get('title', ''),
+                year=m.get('year', 0),
+                genre=m.get('genre', ''),
+                director=m.get('director', ''),
+                cast=m.get('cast', []),
+                avg_rating=m.get('rating', 0),
+                poster_url=m.get('poster', ''),
+                description=m.get('description', ''),
+            )
+        if movie:
             Rating.objects.update_or_create(
                 user=user, movie=movie,
                 defaults={'rating': rating_val}
             )
-        except Movie.DoesNotExist:
-            pass
 
     profile, _ = UserProfile.objects.get_or_create(user=user)
     profile.onboarded = True
