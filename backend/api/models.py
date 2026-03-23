@@ -26,6 +26,11 @@ class Rating(models.Model):
 
     class Meta:
         unique_together = ('user', 'movie')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['movie']),
+        ]
 
     def __str__(self):
         return f"{self.user.username} → {self.movie.title}: {self.rating}"
