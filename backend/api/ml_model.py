@@ -14,6 +14,9 @@ AGE_RANGES = ['13-17', '18-24', '25-34', '35-44', '45-54', '55+']
 GENDERS = ['Male', 'Female', 'Non-binary', 'Prefer not to say']
 REGIONS = ['Americas', 'Europe', 'East Asia', 'South/SE Asia', 'Middle East/Africa', 'Oceania']
 
+MOVIE_FEATURE_DIM = 14
+USER_FEATURE_DIM = NUM_GENRES * 2 + 2 + len(AGE_RANGES) + len(GENDERS) + len(REGIONS)
+
 
 def decade_norm(year):
     decade = (year // 10) * 10
