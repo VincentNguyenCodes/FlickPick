@@ -20,11 +20,24 @@ BASE_URL = 'https://api.themoviedb.org/3'
 IMAGE_BASE = 'https://image.tmdb.org/t/p/w500'
 
 GENRE_MAP = {
-    28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy',
-    80: 'Crime', 18: 'Drama', 10751: 'Animation',
-    14: 'Fantasy', 36: 'Drama', 27: 'Horror', 10402: 'Drama',
-    9648: 'Thriller', 10749: 'Romance', 878: 'Sci-Fi', 10770: 'Drama',
-    53: 'Thriller', 10752: 'War', 37: 'Adventure',
+    28: 'Action',
+    12: 'Adventure',
+    16: 'Animation',
+    35: 'Comedy',
+    80: 'Crime',
+    18: 'Drama',
+    10751: 'Animation',
+    14: 'Fantasy',
+    36: 'Drama',
+    27: 'Horror',
+    10402: 'Drama',
+    9648: 'Thriller',
+    10749: 'Romance',
+    878: 'Sci-Fi',
+    10770: 'Drama',
+    53: 'Thriller',
+    10752: 'War',
+    37: 'Adventure',
 }
 
 def fetch(url):
