@@ -72,7 +72,7 @@ def get_movie_details(tmdb_id):
     }
 
 def main():
-    print('Fetching top rated movies from TMDB...')
+    print('Fetching top 1000 movies from TMDB...')
     movie_ids = []
     page = 1
 
