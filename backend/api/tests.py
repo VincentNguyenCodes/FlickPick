@@ -34,3 +34,6 @@ class FeatureEngineeringTest(TestCase):
 
     def test_movie_feature_dim(self):
         self.assertEqual(MOVIE_FEATURE_DIM, 14)
+
+    def test_embedding_dim(self):
+        self.assertEqual(EMBEDDING_DIM, 32)
