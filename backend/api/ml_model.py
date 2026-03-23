@@ -91,3 +91,20 @@ def build_user_features(user):
         + gender_one_hot
         + region_one_hot
     )
+
+
+class UserNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(42, 128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(64, 32),
+        )
+
+    def forward(self, x):
+        return self.net(x)
