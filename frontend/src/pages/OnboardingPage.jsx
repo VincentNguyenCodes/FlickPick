@@ -186,7 +186,13 @@ function OnboardingPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ ratings: finalRatings }),
+        body: JSON.stringify({
+          ratings: finalRatings,
+          preferred_genres: selectedGenres,
+          age_range: ageRange,
+          gender: gender,
+          region: region,
+        }),
       });
     } catch {
       // proceed even if backend is down during dev
