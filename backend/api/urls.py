@@ -11,4 +11,5 @@ urlpatterns = [
     path('auth/delete-account/', views.delete_account),
     path('recommendations/animated/', views.get_animated),
     path('profile/', views.get_profile),
+    path('genres/', views.get_genres),
 ]
