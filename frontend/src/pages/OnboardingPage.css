@@ -244,6 +244,24 @@
   color: var(--accent-blue);
 }
 
+.step-indicator {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.2s;
+}
+
+.step-dot.active {
+  background: var(--accent-blue);
+}
+
 .profile-step {
   width: 100%;
   max-width: 560px;
