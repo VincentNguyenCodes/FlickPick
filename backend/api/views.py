@@ -151,6 +151,31 @@ def get_genres(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def movie_search(request):
+    q = request.GET.get('q', '').strip()
+    if len(q) < 2:
+        return Response([])
+    already_rated = set(
+        Rating.objects.filter(user=request.user).values_list('movie_id', flat=True)
+    )
+    movies = Movie.objects.filter(title__icontains=q).exclude(id__in=already_rated)[:8]
+    return Response([
+        {
+            'id': m.id,
+            'tmdb_id': m.tmdb_id,
+            'title': m.title,
+            'year': m.year,
+            'genre': m.genre,
+            'poster_url': m.poster_url,
+            'avg_rating': m.avg_rating,
+            'director': m.director,
+        }
+        for m in movies
+    ])
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_profile(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     return Response({

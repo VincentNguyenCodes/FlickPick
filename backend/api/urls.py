@@ -13,4 +13,5 @@ urlpatterns = [
     path('profile/', views.get_profile),
     path('genres/', views.get_genres),
     path('recommendations/genre/<str:genre>/', views.get_by_genre),
+    path('movies/search/', views.movie_search),
 ]
